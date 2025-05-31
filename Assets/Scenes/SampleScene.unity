@@ -448,7 +448,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 0
+  m_Constraints: 4
 --- !u!114 &658964486
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -466,6 +466,7 @@ MonoBehaviour:
   groundCheckRadius: 0.2
   slideSpeed: 10
   chargeTimeThreshold: 1.5
+  groundImpactPrefab: {fileID: 4118934425157829930, guid: 3100252098c23c147b58a98cf1df933f, type: 3}
   maxChargeTime: 2
   minChargeTime: 0.5
   slideDuration: 0.5
@@ -771,6 +772,14 @@ PrefabInstance:
     - target: {fileID: 1640244253113292890, guid: aec31f6c8d60e74468bf8f3565f91868, type: 3}
       propertyPath: m_Name
       value: Warrior
+      objectReference: {fileID: 0}
+    - target: {fileID: 3881527350505622809, guid: aec31f6c8d60e74468bf8f3565f91868, type: 3}
+      propertyPath: m_FlipX
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3881527350505622809, guid: aec31f6c8d60e74468bf8f3565f91868, type: 3}
+      propertyPath: m_FlipY
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3881527350505622809, guid: aec31f6c8d60e74468bf8f3565f91868, type: 3}
       propertyPath: m_Sprite

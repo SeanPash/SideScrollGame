@@ -14,6 +14,9 @@ public class WarriorController : MonoBehaviour
     public float slideSpeed = .1f;
     private bool hasPlayedChargeFinish = false;
 
+    private bool isCrouching = false;
+    private bool isDownwardAttacking = false;
+
 
     public float chargeTimeThreshold = 1.5f;
     private readonly float[] attackSpeeds = new float[] { 1.0f, 2f, 0.7f }; // Attack, Attack2, Attack3
@@ -23,6 +26,9 @@ public class WarriorController : MonoBehaviour
 
 
     private float chargeTimer = 0f;
+
+    public GameObject groundImpactPrefab;
+
 
     private Coroutine dashCoroutine;
 
@@ -38,9 +44,14 @@ public class WarriorController : MonoBehaviour
     public float slideDuration = 0.1f;
     private bool isSliding = false;
     public LayerMask whatIsGround;
+    private bool isCrouchIdlePlaying = false;
+    private bool wasCrouching = false;
     public float cooldownTime = 0.5f;
+    private bool hasFinishedChargeAttack = false;
+
     private bool isOnCooldown = false;
     public float moveSpeed = 5f;
+    private bool mouseHeldSincePressed = false;
     private int comboStep = 0;
     private float comboTimer = 0f;
     public float maxComboDelay = 1f; // seconds allowed between hits
@@ -52,6 +63,8 @@ public class WarriorController : MonoBehaviour
     private Coroutine parryCoroutine;
 
     private bool isAttackCooldown = false;
+    private bool isWaitingForCombo = false;
+
     private bool isParryCooldown = false;
 
     public int maxJumps = 2;
@@ -76,6 +89,15 @@ public class WarriorController : MonoBehaviour
 
     void Update()
     {
+        if (Input.GetMouseButtonDown(0))
+{
+    mouseHeldSincePressed = true;
+}
+        if (Input.GetMouseButtonUp(0))
+        {
+            mouseHeldSincePressed = false;
+        }
+
         bool currentlyGrounded = IsGrounded();
 
         if (currentlyGrounded && !wasGrounded)
@@ -104,35 +126,42 @@ public class WarriorController : MonoBehaviour
     void MovementMethod()
     {
         float moveInput = Input.GetAxisRaw("Horizontal");
+        if (isCharging || chargedAttackTriggered)
+{
+    rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+    return; 
+}
 if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isAttacking && !isAttackCooldown)))
-    {
+        {
 
-        if (isAttacking && attackCoroutine != null)
+            if (isAttacking && attackCoroutine != null)
             {
                 StopCoroutine(attackCoroutine);
                 attackCoroutine = null;
                 isAttacking = false;
             }
 
-        if (isParrying && parryCoroutine != null)
-        {
-            StopCoroutine(parryCoroutine);
-            parryCoroutine = null;
-            isParrying = false;
-            animator.Play("Idle");
+            if (isParrying && parryCoroutine != null)
+            {
+                StopCoroutine(parryCoroutine);
+                parryCoroutine = null;
+                isParrying = false;
+                animator.Play("Idle");
+            }
+            if (isCharging)
+            {
+                isCharging = false;
+                chargeTimer = 0f;
+                sr.color = Color.white;
+                chargedAttackTriggered = false;
+                hasPlayedChargeFinish = false;
+                animator.Play("Idle");
+            }
+            comboTimer = 0f;
+            StartCoroutine(DoSlide());
+            return;
+
         }
-         if (isCharging)
-    {
-        isCharging = false;
-        chargeTimer = 0f;
-        sr.color = Color.white;
-        animator.Play("Idle");
-    }
-    comboTimer = 0f;
-    StartCoroutine(DoSlide());
-    return;
-       
-    }
 
     if (!isSliding && ((isAttacking && IsGrounded()) || isDashing || (isParrying && IsGrounded()) || isCharging))
     {
@@ -148,14 +177,14 @@ if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isA
 
 
 
-        if (!isDashing && !isParrying && !isAttacking)
+        if (!isDashing && !isParrying && (!isAttacking || !IsGrounded()))
 
         {
             rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
         }
 
         //run animation
-        if (IsGrounded() && !isDashing && !isParrying && !isSliding && !isAttacking && !isCharging)
+        if (IsGrounded() && !isDashing && !isParrying && !isSliding && !isAttacking && !isCharging && !wasCrouching)
 
             if (moveInput != 0)
             {
@@ -165,6 +194,48 @@ if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isA
             {
                 animator.Play("Idle");
             }
+
+        //crouch on ground animation
+
+        bool pressingS = Input.GetKey(KeyCode.S);
+        bool grounded = IsGrounded();
+
+        if (grounded && pressingS && !isAttacking && !isSliding && !isCharging)
+        {
+            if (!wasCrouching)
+            {
+                wasCrouching = true;
+                isCrouchIdlePlaying = false;
+                animator.Play("Croush"); 
+
+            }
+            else
+            {
+                if (!isCrouchIdlePlaying && IsInAnimationFinished("Croush"))
+                {
+                    animator.Play("crouchidle");
+                    isCrouchIdlePlaying = true;
+                }
+            }
+
+            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+            return;
+        }
+        else if (wasCrouching)
+        {
+            wasCrouching = false;
+            isCrouchIdlePlaying = false;
+            animator.Play("CrouchExit");
+            return;
+        }
+
+        //downward attack if in air
+
+        if (!IsGrounded() && Input.GetKey(KeyCode.S) && Input.GetKeyDown(KeyCode.Space) && !isAttacking)
+        {
+            StartCoroutine(DoDownwardAttack());
+        }
+
 
         //Initial jump animation
         if (Input.GetKeyDown(KeyCode.Space) && jumpCount < maxJumps)
@@ -185,7 +256,7 @@ if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isA
 
         //flip sprite
 
-        if (!isAttacking && !isParrying)
+        if (!isAttacking && !isParrying && !isCharging && !chargedAttackTriggered)
         {
             if (moveInput > 0 && !isFacingRight)
             {
@@ -229,11 +300,11 @@ if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isA
     }
     void CombatMethod()
     {
-         //regular attack
+        //regular attack
 
-        if (Input.GetMouseButtonDown(0) && !isAttacking && !isCharging && !isParrying && !isAttackCooldown && IsGrounded())
+        if (Input.GetMouseButtonDown(0) && !isCharging && !isParrying && !isAttackCooldown)
         {
-            attackCoroutine = StartCoroutine(DoComboAttack());
+            StartCoroutine(WaitToTriggerCombo());
             return;
         }
         // Allow dash cancel first, then block other input
@@ -260,16 +331,15 @@ if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isA
 
         //charge attack
 
-        if (Input.GetMouseButton(0) && !isAttacking && !isCharging && !isParrying && !isAttackCooldown && IsGrounded())
+        if (Input.GetMouseButton(0) && !isAttacking && !isParrying && !isAttackCooldown && !isWaitingForCombo && IsGrounded())
         {
+            if (chargedAttackTriggered || hasFinishedChargeAttack) return;
             chargeTimer += Time.deltaTime;
 
-            if (chargeTimer >= minChargeTime && !isCharging)
+            if (!isCharging && !hasFinishedChargeAttack)
             {
                 isCharging = true;
-                chargeTimer = 0f;
                 hasPlayedChargeFinish = false;
-                hasReleasedMouse = false;
                 rb.linearVelocity = Vector2.zero;
                 animator.Play("ChargeAttackStart");
             }
@@ -291,39 +361,63 @@ if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isA
                     fullEffectPlayed = true;
                 }
 
-                if (chargeTimer >= maxChargeTime && !hasPlayedChargeFinish)
+                if (chargeTimer >= maxChargeTime && !hasPlayedChargeFinish && !chargedAttackTriggered && hasReleasedMouse)
                 {
-                    chargeTimer = maxChargeTime;
+                    chargedAttackTriggered = true;
                     hasPlayedChargeFinish = true;
                     isCharging = false;
 
                     StartCoroutine(DoChargedAttack(chargeTimer));
                 }
+
             }
         }
         // On release
         if (Input.GetMouseButtonUp(0))
         {
             hasReleasedMouse = true;
+            hasFinishedChargeAttack = false;
 
             if (isCharging)
             {
-
                 if (chargeTimer >= minChargeTime && chargeTimer < maxChargeTime)
                 {
+                    chargedAttackTriggered = true;
+                    hasPlayedChargeFinish = true;
+                    isCharging = false;
                     StartCoroutine(DoChargedAttack(chargeTimer));
                 }
+                else if (chargeTimer < minChargeTime)
+                {
+                    if (!isAttacking)
+                    {
+                        if (IsGrounded())
+                            attackCoroutine = StartCoroutine(DoComboAttack());
+                        else
+                        {
+                            attackCoroutine = StartCoroutine(DoAttack(false));
+                        }
+                    }
+
+                }
+    
                 isCharging = false;
-                chargeTimer = 0f;
-                hasPlayedChargeFinish = false;
-                midEffectPlayed = false;
-                fullEffectPlayed = false;
-                sr.color = Color.white;
-            } else
-            {
-                chargeTimer = 0f;
-            }
-        }
+        chargeTimer = 0f;
+        midEffectPlayed = false;
+        fullEffectPlayed = false;
+        sr.color = Color.white;
+    }
+    else
+    {
+        chargeTimer = 0f;
+    }
+
+    // Reset this even if wasn't charging
+    chargedAttackTriggered = false;
+    hasPlayedChargeFinish = false;
+}
+
+
 
         //Parry
 
@@ -369,6 +463,83 @@ if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isA
         StartCoroutine(StartCooldown());
     }
 
+IEnumerator DoDownwardAttack()
+{
+    isAttacking = true;
+    isDownwardAttacking = true;
+    animator.Play("DownwardAttack");
+
+    // Add force downward to simulate attack
+    rb.linearVelocity = new Vector2(0, -6f); // adjust force as needed
+
+    // Wait until grounded
+    yield return new WaitUntil(() => IsGrounded());
+
+    // Spawn particle effect
+    if (groundImpactPrefab != null)
+{
+    Instantiate(groundImpactPrefab, groundCheck.position, Quaternion.identity);
+}
+
+    // Knockback enemies in area
+    Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 1.5f); // adjust radius
+    foreach (var hit in hits)
+    {
+        if (hit.CompareTag("Enemy"))
+        {
+            Rigidbody2D enemyRb = hit.GetComponent<Rigidbody2D>();
+            if (enemyRb != null)
+            {
+                Vector2 knockDir = (hit.transform.position - transform.position).normalized;
+                enemyRb.AddForce(knockDir * 3f); // adjust strength
+            }
+        }
+    }
+
+    yield return new WaitForSeconds(0.3f); // short delay
+    isAttacking = false;
+    isDownwardAttacking = false;
+    animator.Play("Idle");
+}
+
+
+    IEnumerator WaitToTriggerCombo()
+{
+    isWaitingForCombo = true;
+    float waitTime = 0.15f;
+    float elapsed = 0f;
+
+    while (elapsed < waitTime)
+    {
+            if (Input.GetMouseButtonUp(0)) // Player tapped
+            {
+            if (!isAttacking && !isCharging)
+            {
+                if (IsGrounded())
+                    attackCoroutine = StartCoroutine(DoComboAttack());
+                else
+                    attackCoroutine = StartCoroutine(DoAttack(false));
+                        }
+                isWaitingForCombo = false;
+                yield break;
+            
+        }
+
+        if (Input.GetMouseButton(0) && chargeTimer > 0f) // Player is charging
+        {
+            isWaitingForCombo = false;
+            yield break;
+        }
+
+        elapsed += Time.deltaTime;
+        yield return null;
+    }
+
+    // If they held too long without releasing, don't attack
+    isWaitingForCombo = false;
+}
+
+
 
     IEnumerator DoAttack(bool allowCooldown)
     {
@@ -376,7 +547,15 @@ if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isA
 
         isAttacking = true;
         isDashing = false;
-        rb.linearVelocity = Vector2.zero;
+        if (IsGrounded())
+        {
+            rb.linearVelocity = Vector2.zero;
+        }
+        else
+        {
+            // Keep existing x-velocity, don't interfere with fall or jump
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y);
+        }
 
         bool isAir = !IsGrounded();
         string animName = isAir ? "AirAttack" : "Attack";
@@ -437,6 +616,8 @@ if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isA
             animator.Play("Idle");
     }
 
+
+
     IEnumerator DoComboAttack() {
 
     isAttacking = true;
@@ -466,7 +647,7 @@ if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isA
         yield return null;
     }
 
-        // ✔ Either continue the combo OR stay on current step
+        
 if (nextClickDetected && comboStep < comboAnimations.Length - 1 && !isSliding)
         {
             comboStep++;
@@ -567,6 +748,7 @@ if (nextClickDetected && comboStep < comboAnimations.Length - 1 && !isSliding)
         yield return new WaitForSeconds(0.5f); // Finish animation time
 
         isAttacking = false;
+        yield return new WaitForSeconds(0.05f);
 
         if (Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0)
             animator.Play("Run");
@@ -579,8 +761,12 @@ if (nextClickDetected && comboStep < comboAnimations.Length - 1 && !isSliding)
         sr.color = Color.white; // reset color
         midEffectPlayed = false;
         fullEffectPlayed = false;
-        midEffectPlayed = false;
-        fullEffectPlayed = false;
+        hasReleasedMouse = false;
+        chargedAttackTriggered = false;
+        hasPlayedChargeFinish = false;
+        hasFinishedChargeAttack = true;
+
+
     }
 
     IEnumerator Hitstop(float duration)
@@ -613,6 +799,11 @@ if (nextClickDetected && comboStep < comboAnimations.Length - 1 && !isSliding)
     }
 
 
+    bool IsInAnimationFinished(string animName)
+    {
+        AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
+        return state.IsName(animName) && state.normalizedTime >= 1f;
+    }
 
     IEnumerator DoSlide()
     {

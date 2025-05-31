@@ -13,11 +13,16 @@ public class EnemyAI : MonoBehaviour
         isStunned = true;
         StartCoroutine(StunRoutine(duration));
     }
-    
-     IEnumerator StunRoutine(float time)
+
+    IEnumerator StunRoutine(float time)
     {
         GetComponent<Rigidbody2D>().linearVelocity = Vector2.zero;
         yield return new WaitForSeconds(time);
         isStunned = false;
     }
+    public void TakeDamage(float amount)
+{
+    // Add logic for applying damage, playing effects, etc.
+    Debug.Log("Enemy took " + amount + " damage.");
+}
 }

@@ -17,7 +17,7 @@ TagManager:
   - 
   - 
   - Ground
-  - 
+  - Wall
   - 
   - 
   - 
@@ -43,6 +43,12 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Wall
+    uniqueID: 1157993145
+    locked: 0
+  - name: Ground
+    uniqueID: 2154534663
     locked: 0
   m_RenderingLayers:
   - Default

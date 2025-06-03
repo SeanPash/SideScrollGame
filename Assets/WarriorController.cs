@@ -18,15 +18,10 @@ public class WarriorController : MonoBehaviour
 
     public float slideSpeed = .1f;
     private bool hasPlayedChargeFinish = false;
-
-    private bool isCrouching = false;
     public Transform wallCheck;
     public float wallCheckDistance = 0.3f;
     private int lastWallID = -1;
     private int currentWallID = -1;
-
-    private float wallSlideGraceTime = 0.1f;
-    private float wallSlideGraceTimer = 0f;
 
     public LayerMask whatIsWall;
     private bool isDownwardAttacking = false;
@@ -35,9 +30,6 @@ public class WarriorController : MonoBehaviour
     public float chargeTimeThreshold = 1.5f;
     private readonly float[] attackSpeeds = new float[] { 1.0f, 2f, 0.7f }; // Attack, Attack2, Attack3
     private readonly float[] attackDurations = new float[] { 0.4f, 0.01f, 0.6f }; // adjust to match speed
-
-    private bool attackInterrupted = false;
-
 
     private float chargeTimer = 0f;
 
@@ -49,16 +41,9 @@ public class WarriorController : MonoBehaviour
     private Coroutine dashCoroutine;
 
     private bool isCharging = false;
-    private bool chargedAttackReady = false;
-
     public float maxChargeTime = 2f;
-
-    private bool attackCompleted = false;
-
     public float minChargeTime = 0.5f;
     private bool chargedAttackTriggered = false;
-    private float wallSlideCooldown = 0f;
-
     public float slideDuration = 0.1f;
     private bool isSliding = false;
     public LayerMask whatIsGround;
@@ -71,7 +56,6 @@ public class WarriorController : MonoBehaviour
 
     private bool isOnCooldown = false;
     public float moveSpeed = 5f;
-    private bool mouseHeldSincePressed = false;
     private Vector2 lastWallNormal = Vector2.zero;
 
     private int comboStep = 0;
@@ -109,8 +93,6 @@ public class WarriorController : MonoBehaviour
     public float dashDistance = 12f;
     private bool isFacingRight = true;
     private bool midEffectPlayed = false;
-    private bool suppressNextFlip = false;
-
     private bool fullEffectPlayed = false;
     private bool hasReleasedMouse = true;
 
@@ -128,14 +110,6 @@ public class WarriorController : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetMouseButtonDown(0))
-        {
-            mouseHeldSincePressed = true;
-        }
-        if (Input.GetMouseButtonUp(0))
-        {
-            mouseHeldSincePressed = false;
-        }
 
         bool currentlyGrounded = IsGrounded();
 
@@ -218,7 +192,7 @@ else if (currentWallID != lastWallID && currentWallID != -1)
 
         if (isCharging || chargedAttackTriggered)
         {
-            rb.velocity  = new Vector2(0f, rb.velocity .y);
+            rb.linearVelocity  = new Vector2(0f, rb.linearVelocity .y);
             return;
         }
         if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isAttacking && !isAttackCooldown)))
@@ -258,7 +232,7 @@ else if (currentWallID != lastWallID && currentWallID != -1)
         {
             if (IsGrounded() || (!isWallSliding && Mathf.Abs(moveInput) > 0.1f))
             {
-                rb.velocity = new Vector2(moveInput * moveSpeed, rb.velocity.y);
+                rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
             }
         }
 
@@ -295,7 +269,7 @@ else if (currentWallID != lastWallID && currentWallID != -1)
                 }
             }
 
-            rb.velocity = new Vector2(0, rb.velocity.y);
+            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
             return;
         }
         else if (wasCrouching)
@@ -315,48 +289,48 @@ else if (currentWallID != lastWallID && currentWallID != -1)
 
 
         //Initial jump animation
-       if (Input.GetKeyDown(KeyCode.Space))
-{
-    if ((isWallSliding || wallJumpGraceActive) && !IsGrounded())
-{
-    float horizontalInput = Input.GetAxisRaw("Horizontal");
-    bool pressingOpposite = (isFacingRight && horizontalInput < 0) || (!isFacingRight && horizontalInput > 0);
-    bool isNewWall = currentWallID != lastWallID && currentWallID != -1;
-
-    if (pressingOpposite && !jumpedFromThisWall && Time.time - lastWallJumpTime >= wallJumpCooldown && wallJumpCount < maxWallJumps)
-    {
-if (currentWallID != -1)
+        if (Input.GetKeyDown(KeyCode.Space))
         {
-            lastWallID = currentWallID;
-            jumpedFromThisWall = true;
-        }
+            if ((isWallSliding || wallJumpGraceActive) && !IsGrounded())
+            {
+                float horizontalInput = Input.GetAxisRaw("Horizontal");
+                bool pressingOpposite = (isFacingRight && horizontalInput < 0) || (!isFacingRight && horizontalInput > 0);
+                bool isNewWall = currentWallID != lastWallID && currentWallID != -1;
 
-        Vector2 jumpDirection = isFacingRight ? Vector2.left + Vector2.up : Vector2.right + Vector2.up;
-        float decayMultiplier = Mathf.Clamp01(1f - (wallJumpCount * 0.25f)); 
-        rb.velocity = jumpDirection.normalized * jumpForce * 1.2f * decayMultiplier;
+                if (pressingOpposite && !jumpedFromThisWall && Time.time - lastWallJumpTime >= wallJumpCooldown && jumpCount < maxJumps)
+                {
+                    if (currentWallID != -1)
+                    {
+                        lastWallID = currentWallID;
+                        jumpedFromThisWall = true;
+                    }
 
-        wallJumpCount++;
-        lastWallJumpTime = Time.time;
-        StartCoroutine(TemporarilyReduceGravity());
-        hasAirDashed = false;
-        Flip();
-        wallJumpFlipSuppressTimer = 0.15f;
-        StartCoroutine(HandleJumpAnimation());
-        wallJumpGraceActive = false;
-        return;
-    }
-}
+                    Vector2 jumpDirection = isFacingRight ? Vector2.left + Vector2.up : Vector2.right + Vector2.up;
+                    float decayMultiplier = Mathf.Clamp01(1f - (wallJumpCount * 0.25f));
+                    rb.linearVelocity = jumpDirection.normalized * jumpForce * 1.2f * decayMultiplier;
+                    jumpCount++;
+                    lastWallJumpTime = Time.time;
+                    StartCoroutine(TemporarilyReduceGravity());
+                    hasAirDashed = false;
+                    Flip();
+                    wallJumpFlipSuppressTimer = 0.15f;
+                    StartCoroutine(HandleJumpAnimation());
+                    wallJumpGraceActive = false;
+                    return;
+                }
+            }
 
 
-    // Normal jump fallback
-    if (jumpCount < maxJumps)
-    {
-        rb.velocity = new Vector2(rb.velocity.x, jumpForce);
-        jumpCount++;
-        hasAirDashed = false;
-        StartCoroutine(HandleJumpAnimation());
-        return;
-    }
+            // Normal jump fallback
+            if (jumpCount < maxJumps)
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                jumpCount++;
+                hasAirDashed = false;
+                StartCoroutine(HandleJumpAnimation());
+                return;
+            }
+
         }
 
 
@@ -364,7 +338,7 @@ if (currentWallID != -1)
 
             //falling jump animation
             /*
-                    if (!isWallSliding && rb.velocity.y < -0.1f && !IsGrounded() && !isParrying && !isAttacking && !isCharging)
+                    if (!isWallSliding && rb.linearVelocity.y < -0.1f && !IsGrounded() && !isParrying && !isAttacking && !isCharging)
                     {
                         animator.Play("JumptoFall");
                     }
@@ -389,6 +363,7 @@ if (currentWallID != -1)
         //slide
         if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && !isSliding)
         {
+            Debug.Log("JumpCount: " + jumpCount + " / " + maxJumps);
             if (isAttacking && attackCoroutine != null)
             {
                 StopCoroutine(attackCoroutine);
@@ -411,7 +386,7 @@ if (currentWallID != -1)
     void CombatMethod()
     {
         //regular attack
-
+        if (isOnCooldown) return;
         if (Input.GetMouseButtonDown(0) && !isCharging && !isParrying && !isAttackCooldown)
         {
             StartCoroutine(WaitToTriggerCombo());
@@ -450,7 +425,7 @@ if (currentWallID != -1)
             {
                 isCharging = true;
                 hasPlayedChargeFinish = false;
-                rb.velocity = Vector2.zero;
+                rb.linearVelocity = Vector2.zero;
                 animator.Play("ChargeAttackStart");
             }
 
@@ -545,7 +520,7 @@ if (currentWallID != -1)
     bool touchingWall = IsTouchingWall();
     float moveInput = Input.GetAxisRaw("Horizontal");
     bool movingTowardsWall = (isFacingRight && moveInput > 0) || (!isFacingRight && moveInput < 0);
-    bool verticalSlowEnough = rb.velocity.y <= 0.1f;
+    bool verticalSlowEnough = rb.linearVelocity.y <= 0.1f;
 
 bool suppressWallSlide = Time.time - lastWallJumpTime < 0.2f;
 
@@ -563,12 +538,12 @@ if (!grounded && touchingWall && verticalSlowEnough && !isSliding && !isParrying
 
         if (wallHangTimer > 0f)
         {
-            rb.velocity = new Vector2(rb.velocity.x, 0f); // hang
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f); // hang
             wallHangTimer -= Time.deltaTime;
         }
         else
         {
-            rb.velocity = new Vector2(rb.velocity.x, wallSlideSpeed);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, wallSlideSpeed);
         }
     }
     else
@@ -598,7 +573,7 @@ if (!grounded && touchingWall && verticalSlowEnough && !isSliding && !isParrying
         ResetCombo();
         isDashing = true;
         animator.Play("Dash");
-        rb.velocity = new Vector2(transform.localScale.x * dashDistance, rb.velocity.y);
+        rb.linearVelocity = new Vector2(transform.localScale.x * dashDistance, rb.linearVelocity.y);
         float dashTime = 0.3f;
         float timer = 0f;
 
@@ -620,7 +595,7 @@ if (!grounded && touchingWall && verticalSlowEnough && !isSliding && !isParrying
         animator.Play("DownwardAttack");
 
         // Add force downward to simulate attack
-        rb.velocity = new Vector2(0, -6f); // adjust force as needed
+        rb.linearVelocity = new Vector2(0, -6f); // adjust force as needed
 
         // Wait until grounded
         yield return new WaitUntil(() => IsGrounded());
@@ -699,12 +674,12 @@ if (!grounded && touchingWall && verticalSlowEnough && !isSliding && !isParrying
         isDashing = false;
         if (IsGrounded())
         {
-            rb.velocity = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
         }
         else
         {
             // Keep existing x-velocity, don't interfere with fall or jump
-            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y);
         }
 
         bool isAir = !IsGrounded();
@@ -724,7 +699,7 @@ if (!grounded && touchingWall && verticalSlowEnough && !isSliding && !isParrying
             // Check for jump interrupt
             if (Input.GetKeyDown(KeyCode.Space) && jumpCount < maxJumps)
             {
-                rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
                 jumpCount++;
                 StartCoroutine(HandleJumpAnimation());
                 interrupted = true;
@@ -772,7 +747,7 @@ if (!grounded && touchingWall && verticalSlowEnough && !isSliding && !isParrying
     {
 
         isAttacking = true;
-        rb.velocity = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
 
         string anim = comboAnimations[comboStep];
 
@@ -842,21 +817,19 @@ IEnumerator TemporarilyReduceGravity()
 
         // Don't freeze movement in air
         if (IsGrounded())
-            rb.velocity = new Vector2(0, rb.velocity.y);
+            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
 
         animator.Play("Parry");
 
         yield return new WaitForSeconds(0.3f);
 
         // Attempt to stun enemies
-        bool hitEnemy = false;
         Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 1.2f);
         foreach (var hit in hits)
         {
             if (hit.CompareTag("Enemy"))
             {
                 hit.GetComponent<EnemyAI>()?.Stun(1.0f);
-                hitEnemy = true;
             }
         }
 
@@ -877,7 +850,7 @@ IEnumerator TemporarilyReduceGravity()
     {
         ResetCombo();
         isAttacking = true;
-        rb.velocity = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
 
         animator.Play("ChargeAttackFinish");
 
@@ -933,12 +906,12 @@ IEnumerator TemporarilyReduceGravity()
     {
         yield return new WaitForFixedUpdate(); // allow physics to apply jump
 
-        if (!IsGrounded() && IsTouchingWall() && rb.velocity.y < 0 && wallJumpFlipSuppressTimer <= 0f)
+        if (!IsGrounded() && IsTouchingWall() && rb.linearVelocity.y < 0 && wallJumpFlipSuppressTimer <= 0f)
 {
     isWallSliding = true;
     animator.Play("Wall-Slide");
 }
-        else if (!IsGrounded() && rb.velocity.y > 0)
+        else if (!IsGrounded() && rb.linearVelocity.y > 0)
         {
             isWallSliding = false;
             animator.Play("jump");
@@ -995,7 +968,7 @@ IEnumerator TemporarilyReduceGravity()
         float slideDuration = 0.4f;
 
         moveSpeed = slideSpeed;
-        rb.velocity = new Vector2((isFacingRight ? 1 : -1) * slideSpeed, rb.velocity.y);
+        rb.linearVelocity = new Vector2((isFacingRight ? 1 : -1) * slideSpeed, rb.linearVelocity.y);
 
         yield return new WaitForSeconds(slideDuration);
 
@@ -1105,9 +1078,9 @@ IEnumerator TemporarilyReduceGravity()
     }
     else
     {
-        if (rb.velocity.y < -0.1f)
+        if (rb.linearVelocity.y < -0.1f)
             animator.Play("JumptoFall");
-        else if (rb.velocity.y > 0.1f)
+        else if (rb.linearVelocity.y > 0.1f)
             animator.Play("jump");
     }
 }

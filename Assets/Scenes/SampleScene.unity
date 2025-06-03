@@ -784,8 +784,9 @@ MonoBehaviour:
   - Attack1
   - Attack2
   - Attack3
+  maxWallJumps: 1
   trail: {fileID: 1660044091}
-  maxJumps: 2
+  maxJumps: 3
   dashDistance: 3
 --- !u!4 &658964489 stripped
 Transform:

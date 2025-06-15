@@ -33,7 +33,7 @@ public class RegularGolem : MonoBehaviour
     private bool useFirstAttack = true;
     private bool hasRockAttacked = false;
     private bool isMoving = false;
-    
+
 
 
     void Start()
@@ -61,7 +61,7 @@ public class RegularGolem : MonoBehaviour
         }
 
         // Animate only on change
-        bool currentlyMoving = Mathf.Abs(rb.velocity.x) > 0.2f;
+        bool currentlyMoving = Mathf.Abs(rb.linearVelocity.x) > 0.2f;
 
         if (currentlyMoving != isMoving)
         {
@@ -102,7 +102,7 @@ public class RegularGolem : MonoBehaviour
         if (isAttacking || isInAttackCycle) return;
 
         Vector2 dir = (player.position - transform.position).normalized;
-        rb.velocity = new Vector2(dir.x * moveSpeed, rb.velocity.y);
+        rb.linearVelocity  = new Vector2(dir.x * moveSpeed, rb.linearVelocity .y);
         if (!IsInAnimation("Enemy Run"))
         {
             animator.Play("Enemy Run", 0);
@@ -113,7 +113,7 @@ public class RegularGolem : MonoBehaviour
     {
         isAttacking = true;
         hasRockAttacked = true;
-        rb.velocity = Vector2.zero;
+        rb.linearVelocity  = Vector2.zero;
 
         // Step 1: Rock attack
         animator.Play("Enemy Attack 1");
@@ -134,7 +134,7 @@ public class RegularGolem : MonoBehaviour
             float dist = Vector2.Distance(transform.position, player.position);
             if (dist <= attackRange)
             {
-                rb.velocity = Vector2.zero;
+                rb.linearVelocity  = Vector2.zero;
                 animator.Play(useFirstAttack ? "Enemy Attack 2" : "Enemy Attack 3");
                 useFirstAttack = !useFirstAttack;
                 yield return new WaitForSeconds(1f); // attack interval

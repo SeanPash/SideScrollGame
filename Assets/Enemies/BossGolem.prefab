@@ -11,8 +11,9 @@ GameObject:
   - component: {fileID: 6700925325313537770}
   - component: {fileID: 7255649156355843147}
   - component: {fileID: 2045202580998729129}
+  - component: {fileID: 1750962115108804786}
   m_Layer: 0
-  m_Name: UpgradedGolem
+  m_Name: BossGolem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -77,7 +78,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: -4155366205407171871, guid: 20df5f5471596254f99315fbac829d0f, type: 3}
+  m_Sprite: {fileID: 6767266734697148751, guid: b10aba54aecddfa4a955158f5746f0f4, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -110,3 +111,29 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1750962115108804786
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8039872631363476345}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b1177bd7dea81744bcc7fbf405e8954, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentPhase: 0
+  animator: {fileID: 0}
+  spriteRenderer: {fileID: 0}
+  rb: {fileID: 0}
+  player: {fileID: 0}
+  phaseOneController: {fileID: 0}
+  reinforcedController: {fileID: 0}
+  maxHealth: 300
+  moveSpeed: 2
+  meleeRange: 1.2
+  shootRange: 5.5
+  chaseRange: 8
+  projectilePrefab: {fileID: 0}
+  shootPoint: {fileID: 0}

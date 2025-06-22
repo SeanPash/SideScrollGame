@@ -3460,7 +3460,7 @@ PrefabInstance:
       objectReference: {fileID: 1122307453}
     - target: {fileID: 1750962115108804786, guid: 9739a4159f27a4c408b413cb97c23afb, type: 3}
       propertyPath: attackRange
-      value: 0.5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1750962115108804786, guid: 9739a4159f27a4c408b413cb97c23afb, type: 3}
       propertyPath: midIdleSprite

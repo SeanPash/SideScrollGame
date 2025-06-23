@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 3039035341349213118}
   - component: {fileID: 526652177906135740}
   - component: {fileID: 6643894376594019623}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: BossGolemProjectile
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -30,7 +30,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.32400036, y: 0.19400024, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 4, y: 4, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -147,7 +147,7 @@ CircleCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
@@ -168,3 +168,4 @@ MonoBehaviour:
   speed: 8
   lifetime: 3
   damage: 10
+  spriteChild: {fileID: 0}

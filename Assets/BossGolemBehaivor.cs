@@ -49,7 +49,7 @@ public class BossGolem : MonoBehaviour
 
     void Start()
     {
-        currentHealth = maxHealth;
+        currentHealth = maxHealth / 2;
         SwitchToForm(GolemForm.Base);
     }
 
@@ -237,7 +237,7 @@ public class BossGolem : MonoBehaviour
         {
             GameObject proj = Instantiate(projectilePrefab, shootPoint.position, Quaternion.identity);
             Vector2 dir = (player.position - shootPoint.position).normalized;
-            proj.GetComponent<BossGolemProjectile>().SetDirection(dir);
+            proj.GetComponent<ProjectileBehaivor>().SetDirection(dir);
         }
     }
 
@@ -277,8 +277,14 @@ public class BossGolem : MonoBehaviour
 
     void FacePlayer()
     {
-        spriteRenderer.flipX = player.position.x < transform.position.x;
-    }
+    Vector3 localScale = transform.localScale;
+
+    if (player.position.x < transform.position.x)
+        localScale.x = -Mathf.Abs(localScale.x); 
+    else
+        localScale.x = Mathf.Abs(localScale.x); 
+
+    transform.localScale = localScale;    }
 
     bool IsPlayerInSight()
     {

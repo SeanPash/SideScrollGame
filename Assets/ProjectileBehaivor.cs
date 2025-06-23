@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class BossGolemProjectile : MonoBehaviour
+public class ProjectileBehaivor : MonoBehaviour
 {
     public float speed = 8f;
     public float lifetime = 3f;
@@ -11,6 +11,20 @@ public class BossGolemProjectile : MonoBehaviour
     public void SetDirection(Vector2 dir)
     {
         direction = dir.normalized;
+
+        // Flip horizontally if going left
+        if (direction.x < 0f)
+        {
+            Vector3 scale = transform.localScale;
+            scale.x = -Mathf.Abs(scale.x);
+            transform.localScale = scale;
+        }
+        else
+        {
+            Vector3 scale = transform.localScale;
+            scale.x = Mathf.Abs(scale.x);
+            transform.localScale = scale;
+        }
     }
 
     void Start()
@@ -20,19 +34,17 @@ public class BossGolemProjectile : MonoBehaviour
 
     void Update()
     {
-        transform.Translate(direction * speed * Time.deltaTime);
+        transform.Translate(direction * speed * Time.deltaTime, Space.World);
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (other.CompareTag("Player"))
         {
-            // Damage logic goes here
             Debug.Log("Hit player for " + damage + " damage.");
-            // other.GetComponent<PlayerHealth>()?.TakeDamage(damage);
             Destroy(gameObject);
         }
-        else if (!other.isTrigger) // hits wall or ground
+        else if (!other.isTrigger)
         {
             Destroy(gameObject);
         }

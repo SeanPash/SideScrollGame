@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 3039035341349213118}
   - component: {fileID: 526652177906135740}
   - component: {fileID: 6643894376594019623}
-  m_Layer: 10
+  m_Layer: 11
   m_Name: BossGolemProjectile
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -168,4 +168,3 @@ MonoBehaviour:
   speed: 8
   lifetime: 3
   damage: 10
-  spriteChild: {fileID: 0}

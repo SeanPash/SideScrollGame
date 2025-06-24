@@ -7,6 +7,7 @@ TagManager:
   - Bosses
   - Enemy
   - Warrior
+  - Boss
   layers:
   - Default
   - TransparentFX
@@ -16,10 +17,10 @@ TagManager:
   - UI
   - Player
   - Enemy
+  - Boss
   - Ground
-  - Wall
-  - Projectile
-  - 
+  - wall
+  - projectile
   - 
   - 
   - 

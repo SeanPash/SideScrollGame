@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-public class BossGolem : MonoBehaviour
+public class BossGolemBehavior : MonoBehaviour
 {
     public enum GolemForm { Base, Mid, Reinforced }
 

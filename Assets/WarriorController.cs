@@ -107,6 +107,7 @@ public class WarriorController : MonoBehaviour
     private bool isParrying = false;
 
     private bool isAttacking = false;
+    private ParrySystem parrySystem;
     void Start()
     {
         ResetCombo();
@@ -114,6 +115,7 @@ public class WarriorController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         sr = GetComponent<SpriteRenderer>();
         cameraShake = Camera.main.GetComponent<CameraShake>();
+        parrySystem = GetComponent<ParrySystem>();
     }
 
     void Update()
@@ -228,6 +230,7 @@ wasGrounded = isGrounded;
         }
         if (Input.GetKeyDown(KeyCode.LeftShift) && !isDashing && !IsGrounded() && !isSliding && !isParrying && !isCharging && !isAttacking)
         {
+            if (!PlayerStats.Instance.UseStamina(15f)) return;
             if (IsGrounded() || !hasAirDashed)
             {
                 if (!IsGrounded())
@@ -246,10 +249,10 @@ wasGrounded = isGrounded;
             return;
         }
      bool holdingLeft = Input.GetKey(KeyCode.A);
-bool holdingRight = Input.GetKey(KeyCode.D);
+    bool holdingRight = Input.GetKey(KeyCode.D);
         if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isAttacking && !isAttackCooldown)) && (holdingLeft || holdingRight))
         {
-
+            if (!PlayerStats.Instance.UseStamina(15f)) return;
             if (isAttacking && attackCoroutine != null)
             {
                 StopCoroutine(attackCoroutine);
@@ -363,6 +366,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
         //Initial jump animation
         if (Input.GetKeyDown(KeyCode.Space))
         {
+            if (!PlayerStats.Instance.UseStamina(7f)) return;
             if ((isWallSliding || wallJumpGraceActive) && !IsGrounded())
             {
                 float horizontalInput = Input.GetAxisRaw("Horizontal");
@@ -433,8 +437,9 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
         }
 
         //slide
-        if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && !isSliding && (holdingLeft || holdingRight))
+        if (Input.GetKeyDown(KeyCode.LeftControl)  && IsGrounded() && !isSliding && (holdingLeft || holdingRight))
         {
+            if (!PlayerStats.Instance.UseStamina(15f)) return;
             if (isAttacking && attackCoroutine != null)
             {
                 StopCoroutine(attackCoroutine);
@@ -476,6 +481,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
         if (isOnCooldown) return;
         if (Input.GetMouseButtonDown(0) && !isCharging && !isParrying && !isAttackCooldown)
         {
+            if (!PlayerStats.Instance.UseStamina(10f)) return;
             StartCoroutine(WaitToTriggerCombo());
             return;
         }
@@ -484,6 +490,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
         {
             if (Input.GetMouseButtonDown(0) && !isCharging && !isParrying && !isAttackCooldown)
             {
+                if (!PlayerStats.Instance.UseStamina(10f)) return;
                 StopCoroutine("DoSlide");
                 isSliding = false;
                 comboTimer = 0f;
@@ -536,6 +543,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
 
                 if (chargeTimer >= maxChargeTime && !hasPlayedChargeFinish && !chargedAttackTriggered && hasReleasedMouse)
                 {
+                    if (!PlayerStats.Instance.UseStamina(20f)) return;
                     chargedAttackTriggered = true;
                     hasPlayedChargeFinish = true;
                     isCharging = false;
@@ -555,6 +563,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
             {
                 if (chargeTimer >= minChargeTime && chargeTimer < maxChargeTime)
                 {
+                    if (!PlayerStats.Instance.UseStamina(20f)) return;
                     chargedAttackTriggered = true;
                     hasPlayedChargeFinish = true;
                     isCharging = false;
@@ -565,9 +574,13 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
                     if (!isAttacking)
                     {
                         if (IsGrounded())
+                        {
+                            if (!PlayerStats.Instance.UseStamina(10f)) return;
                             attackCoroutine = StartCoroutine(DoComboAttack());
+                        }
                         else
                         {
+                            if (!PlayerStats.Instance.UseStamina(10f)) return;
                             attackCoroutine = StartCoroutine(DoAttack(false));
                         }
                     }
@@ -921,48 +934,40 @@ if (!IsInAnyCrouch())
 
 
 
-    IEnumerator DoParry()
-    {
-        ResetCombo();
-
-        if (isParrying || isParryCooldown) yield break;
-
-        isParrying = true;
-
-        // Don't freeze movement in air
-        if (IsGrounded())
-            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
-
-        animator.Play("Parry");
-
-        yield return new WaitForSeconds(0.3f);
-
-        // Attempt to stun enemies
-        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 1.2f);
-        foreach (var hit in hits)
-        {
-            if (hit.CompareTag("Enemy"))
-            {
-                hit.GetComponent<EnemyAI>()?.Stun(1.0f);
-            }
-        }
-
-        isParrying = false;
-
-        // Fallback animation if no enemy hit
-        if (Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0)
-            animator.Play("Run");
-        else if (!IsGrounded())
-            animator.Play("JumptoFall");
-        else
-if (!IsInAnyCrouch())
+   IEnumerator DoParry()
 {
-    animator.Play("Idle");
-}
+    ResetCombo();
 
+    if (isParrying || isParryCooldown) yield break;
+    isParrying = true;
 
-        StartCoroutine(StartParryCooldown(0.2f));
+    if (IsGrounded())
+        rb.velocity = new Vector2(0, rb.velocity.y);
+
+    animator.Play("Parry");
+
+    yield return new WaitForSeconds(0.3f);
+
+    Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 1.2f);
+    foreach (var hit in hits)
+    {
+        if (hit.CompareTag("Enemy") || hit.CompareTag("Boss"))
+        {
+            parrySystem.Parry(hit.gameObject); 
+        }
     }
+
+    isParrying = false;
+
+    if (Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0)
+        animator.Play("Run");
+    else if (!IsGrounded())
+        animator.Play("JumptoFall");
+    else if (!IsInAnyCrouch())
+        animator.Play("Idle");
+
+    StartCoroutine(StartParryCooldown(0.2f));
+}
 
     IEnumerator DoChargedAttack(float chargeTime)
     {
@@ -986,7 +991,7 @@ if (!IsInAnyCrouch())
             if (hit.CompareTag("Enemy"))
             {
                 hitEnemy = true;
-                hit.GetComponent<EnemyAI>()?.TakeDamage(damage);
+                hit.GetComponent<GolemAi>()?.TakeDamage(damage);
             }
         }
 

@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-public class BossGolemBehavior : MonoBehaviour
+public class BossGolemBehavior : MonoBehaviour, IDamageable
 {
     public enum GolemForm { Base, Mid, Reinforced }
 
@@ -33,7 +33,7 @@ public class BossGolemBehavior : MonoBehaviour
     public Transform shootPoint;
 
     [Header("Boss Stats")]
-    public float maxHealth = 300f;
+    public float maxHealth = 100f;
     private float currentHealth;
     private bool isInvulnerable = false;
 
@@ -44,67 +44,69 @@ public class BossGolemBehavior : MonoBehaviour
     private bool hasRockAttacked = false;
     private bool isMoving = false;
     private bool hasSwitchedToMidOnce = false;
+    public bool isHurting = false;
+
 
 
 
     void Start()
     {
-        currentHealth = maxHealth / 2;
+        currentHealth = maxHealth;
         SwitchToForm(GolemForm.Base);
     }
 
-   void Update()
-{
-    if (!IsPlayerInSight()) return;
-
-    float dist = Vector2.Distance(transform.position, player.position);
-    FacePlayer();
-
-    if (currentForm == GolemForm.Base)
+    void Update()
     {
-        if (dist > attackRange)
+        if (!IsPlayerInSight() || isHurting) return;
+
+        float dist = Vector2.Distance(transform.position, player.position);
+        FacePlayer();
+
+        if (currentForm == GolemForm.Base)
         {
-            MoveTowardPlayer();
+            if (dist > attackRange)
+            {
+                MoveTowardPlayer();
+            }
+            else if (!hasRockAttacked && !isAttacking && !hasSwitchedToMidOnce)
+            {
+                StartCoroutine(RockAttackThenTransform());
+            }
+
+            AnimateMoveState();
+
+            if (currentHealth <= maxHealth / 2f)
+            {
+                StartCoroutine(TransitionToReinforcedPhase());
+            }
         }
-    else if (!hasRockAttacked && !isAttacking && !hasSwitchedToMidOnce)
-{
-    StartCoroutine(RockAttackThenTransform());
-}
-
-        AnimateMoveState();
-
-        if (currentHealth <= maxHealth / 2f)
+        else if (currentForm == GolemForm.Mid)
         {
-            StartCoroutine(TransitionToReinforcedPhase());
+            if (!isInAttackCycle && !isAttacking)
+            {
+                if (dist <= attackRange)
+                {
+                    StartCoroutine(AttackCycle());
+                }
+                else
+                {
+                    StartCoroutine(ResetToBaseForm()); // back to Base form if player left range
+                }
+            }
+        }
+
+
+        else if (currentForm == GolemForm.Reinforced)
+        {
+            HandleReinforcedBehavior(dist);
         }
     }
-    else if (currentForm == GolemForm.Mid)
-{
-    if (!isInAttackCycle && !isAttacking)
-    {
-        if (dist <= attackRange)
-        {
-            StartCoroutine(AttackCycle());
-        }
-        else
-        {
-            StartCoroutine(ResetToBaseForm()); // back to Base form if player left range
-        }
-    }
-}
-
-
-    else if (currentForm == GolemForm.Reinforced)
-    {
-        HandleReinforcedBehavior(dist);
-    }
-}
 
 
     // --- Phase 1 & 2 Behavior ---
     void MoveTowardPlayer()
     {
-        if (isAttacking || isInAttackCycle) return;
+        if (isAttacking || isInAttackCycle || isHurting) return;
 
         Vector2 dir = (player.position - transform.position).normalized;
         rb.linearVelocity = new Vector2(dir.x * moveSpeed, rb.linearVelocity.y);
@@ -130,6 +132,7 @@ public class BossGolemBehavior : MonoBehaviour
 
     IEnumerator AttackCycle()
     {
+        if (isHurting) yield break;
         isInAttackCycle = true;
         isAttacking = true;
         attackTimer = attackCycleDuration;
@@ -160,26 +163,26 @@ public class BossGolemBehavior : MonoBehaviour
     }
 
     IEnumerator ResetToBaseForm()
-{
-    
-    if (currentForm != GolemForm.Mid || !hasSwitchedToMidOnce)
-        yield break;
-    isAttacking = true;
-    animator.Play("Enemy Ability");
-    yield return new WaitForSeconds(0.3f);
+    {
 
-    SwitchToForm(GolemForm.Base);
+        if (currentForm != GolemForm.Mid || !hasSwitchedToMidOnce)
+            yield break;
+        isAttacking = true;
+        animator.Play("Enemy Ability");
+        yield return new WaitForSeconds(0.3f);
+
+        SwitchToForm(GolemForm.Base);
         hasRockAttacked = false;
         hasSwitchedToMidOnce = false;
-    isAttacking = false;
-    isInAttackCycle = false;
+        isAttacking = false;
+        isInAttackCycle = false;
 
-    // Optional: check immediately if player is already in range again
-    if (IsPlayerInSight() && Vector2.Distance(transform.position, player.position) > attackRange)
-    {
-        MoveTowardPlayer();
+        // Optional: check immediately if player is already in range again
+        if (IsPlayerInSight() && Vector2.Distance(transform.position, player.position) > attackRange)
+        {
+            MoveTowardPlayer();
+        }
     }
-}
 
 
 
@@ -199,6 +202,7 @@ public class BossGolemBehavior : MonoBehaviour
 
     void HandleReinforcedBehavior(float dist)
     {
+        if (isHurting) return;
         attackTimer -= Time.deltaTime;
 
         if (dist <= attackRange)
@@ -244,7 +248,7 @@ public class BossGolemBehavior : MonoBehaviour
     // --- Utilities ---
     void AnimateMoveState()
     {
-    bool currentlyMoving = Mathf.Abs(rb.linearVelocity.x) > 0.01f;
+        bool currentlyMoving = Mathf.Abs(rb.linearVelocity.x) > 0.01f;
         if (currentlyMoving != isMoving)
         {
             isMoving = currentlyMoving;
@@ -253,38 +257,39 @@ public class BossGolemBehavior : MonoBehaviour
     }
 
     void SwitchToForm(GolemForm newForm)
-{
-    currentForm = newForm;
-
-    switch (newForm)
     {
-        case GolemForm.Base:
-            animator.runtimeAnimatorController = baseFormController;
-            spriteRenderer.sprite = baseIdleSprite;
-            hasRockAttacked = false; 
-            break;
-        case GolemForm.Mid:
-            animator.runtimeAnimatorController = midFormController;
-            spriteRenderer.sprite = midIdleSprite;
-            break;
-        case GolemForm.Reinforced:
-            animator.runtimeAnimatorController = reinforcedController;
-            spriteRenderer.sprite = reinforcedIdleSprite;
-            break;
+        currentForm = newForm;
+
+        switch (newForm)
+        {
+            case GolemForm.Base:
+                animator.runtimeAnimatorController = baseFormController;
+                spriteRenderer.sprite = baseIdleSprite;
+                hasRockAttacked = false;
+                break;
+            case GolemForm.Mid:
+                animator.runtimeAnimatorController = midFormController;
+                spriteRenderer.sprite = midIdleSprite;
+                break;
+            case GolemForm.Reinforced:
+                animator.runtimeAnimatorController = reinforcedController;
+                spriteRenderer.sprite = reinforcedIdleSprite;
+                break;
+        }
     }
-}
 
 
     void FacePlayer()
     {
-    Vector3 localScale = transform.localScale;
+        Vector3 localScale = transform.localScale;
 
-    if (player.position.x < transform.position.x)
-        localScale.x = -Mathf.Abs(localScale.x); 
-    else
-        localScale.x = Mathf.Abs(localScale.x); 
+        if (player.position.x < transform.position.x)
+            localScale.x = -Mathf.Abs(localScale.x);
+        else
+            localScale.x = Mathf.Abs(localScale.x);
 
-    transform.localScale = localScale;    }
+        transform.localScale = localScale;
+    }
 
     bool IsPlayerInSight()
     {
@@ -296,16 +301,61 @@ public class BossGolemBehavior : MonoBehaviour
         return animator.GetCurrentAnimatorStateInfo(0).IsName(name);
     }
 
-    public void TakeDamage(float damage)
-    {
-        if (isInvulnerable) return;
-
-        currentHealth -= damage;
-        if (currentHealth <= 0)
+   public void TakeDamage(int damage)
+{
+        if (isInvulnerable)
         {
-            animator.Play("Enemy Death");
-            rb.linearVelocity = Vector2.zero;
-            this.enabled = false;
+                    Debug.Log("[BossGolem] Ignored damage: Invulnerable.");
+            return;
+        }
+    currentHealth -= damage;
+    Debug.Log($"Boss took {damage} damage. Current HP: {currentHealth}");
+
+    StartCoroutine(PlayHurtEffect());
+
+    if (currentHealth <= maxHealth / 2f && currentForm != GolemForm.Reinforced)
+    {
+                Debug.Log("[BossGolem] Triggering transition to reinforced phase.");
+        StartCoroutine(TransitionToReinforcedPhase());
+    }
+
+    if (currentHealth <= 0)
+    {
+        Debug.Log("[BossGolem] Triggering death.");
+        animator.Play("Enemy Death, 0");
+        rb.linearVelocity = Vector2.zero;
+        this.enabled = false;
+    }
+}
+
+    IEnumerator PlayHurtEffect()
+    {
+        isHurting = true;
+
+        // Flash red
+        spriteRenderer.color = Color.red;
+
+        // Play the correct "Enemy Hit" animation depending on the current form
+        if (currentForm == GolemForm.Base || currentForm == GolemForm.Mid)
+        {
+            animator.Play("Enemy Hit");
+        }
+        else if (currentForm == GolemForm.Reinforced)
+        {
+            animator.Play("Enemy Hurt"); // or use "Enemy Hit" if same naming
+        }
+
+        yield return new WaitForSeconds(0.2f);
+
+        spriteRenderer.color = Color.white;
+        isHurting = false;
+
+        // Optional: return to idle manually if not handled in Animator transitions
+        if (!isAttacking && !isInAttackCycle)
+        {
+            animator.Play("Enemy Idle");
         }
     }
+
+
 }

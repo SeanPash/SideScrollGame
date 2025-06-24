@@ -4,6 +4,12 @@ public class DealDamage : MonoBehaviour
     public bool isFinalComboHit;
     public bool isChargeAttack;
     public float chargeTime;
+    private bool hasHit = false;
+    private int attackFrame = 0;
+    public LayerMask targetMask;
+
+
+    public bool damageWindowActive = false;
 
     public int CalculateDamage()
     {
@@ -16,34 +22,71 @@ public class DealDamage : MonoBehaviour
 
         return PlayerStats.Instance.GetDamage(isFinalComboHit);
     }
-    private void OnTriggerEnter2D(Collider2D other)
-{
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        if (!damageWindowActive || hasHit) return;
+
     if (other.CompareTag("Boss") || other.CompareTag("Enemy"))
     {
-        DealDamage damageSource = GetComponent<DealDamage>();
-        int damage = damageSource != null ? damageSource.CalculateDamage() : 1;
+        Debug.Log($"[DealDamage] Hit {other.name} on attackFrame {attackFrame}");
+        int damage = CalculateDamage();
 
-        // Tries RegularGolemHealth
-        var regHealth = other.GetComponent<RegularGolemHealth>();
-        if (regHealth != null)
+        IDamageable damageable = other.GetComponentInParent<IDamageable>();
+        if (damageable != null)
         {
-            regHealth.TakeDamage(damage);
+            damageable.TakeDamage(damage);
+            hasHit = true;
         }
 
-        // Tries GolemAI
-        var ai = other.GetComponent<GolemAi>();
-        if (ai != null)
+        var stunnable = other.GetComponentInParent<IStunnable>();
+        if (stunnable != null)
         {
-            ai.TakeDamage(damage);
-        }
-
-        // Optional: also try stun
-        var stun = other.GetComponent<GolemStun>();
-        if (stun != null)
-        {
-            stun.Stun(0.5f);
+            stunnable.Stun(1f);
         }
     }
 }
+
+
+
+    public void ResetHit()
+    {
+        hasHit = false;
+    }
+    public void EndHitWindow()
+    {
+        damageWindowActive = false;
+    }
+
+    public void BeginHitWindow(int frame)
+    {
+        attackFrame = frame;
+        hasHit = false;
+        damageWindowActive = true;
+    }
+    public void ManualCheckHits()
+    {
+        Collider2D[] hits = Physics2D.OverlapBoxAll(transform.position, GetComponent<Collider2D>().bounds.size, 0f, targetMask);
+
+        foreach (var hit in hits)
+        {
+            if (hasHit) break; // Only one enemy per swing (optional)
+
+            IDamageable damageable = hit.GetComponentInParent<IDamageable>();
+            if (damageable != null)
+            {
+                damageable.TakeDamage(CalculateDamage());
+                hasHit = true;
+            }
+
+            IStunnable stunnable = hit.GetComponentInParent<IStunnable>();
+            if (stunnable != null)
+            {
+                stunnable.Stun(1f);
+            }
+        }
+    }
+
+    
+
 
 }

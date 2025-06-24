@@ -2,40 +2,42 @@ using UnityEngine;
 
 public class ParrySystem : MonoBehaviour
 {
+    [Header("Parry Settings")]
     public float regularParryCooldown = 4f;
     private float lastParryTime = -Mathf.Infinity;
-    private int bossParryCount = 5;
 
-    public int bossParryThreshold = 5;
+    [Header("Boss Parry Logic")]
+    private int bossParryCount = 0;
+    public int bossParryThreshold = 2; // e.g., 2 parries to stun
 
-    public void Parry(GameObject Target)
+    public void Parry(GameObject target)
     {
-        if (Time.time - lastParryTime < regularParryCooldown) return;
+        if (target == null) return;
 
-        if (Target.CompareTag("Enemy"))
+        IStunnable stunnable = target.GetComponent<IStunnable>();
+        if (stunnable == null) return;
+
+        if (target.CompareTag("Enemy"))
         {
-            Target.GetComponent<GolemStun>()?.Stun(1f);
-            lastParryTime = Time.time;
-        }
-        else if (Target.CompareTag("Boss"))
-        {
-            bossParryCount++;
-            if (bossParryCount >= bossParryThreshold)
+            if (Time.time - lastParryTime >= regularParryCooldown)
             {
-                Target.GetComponent<GolemStun>()?.Stun(1.5f);
-                bossParryCount = 0;
+                stunnable.Stun(1f); // regular enemies
+                lastParryTime = Time.time;
             }
         }
-    }
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+        else if (target.CompareTag("Boss"))
+        {
+            bossParryCount++;
+            Debug.Log($"Parried Boss! Count: {bossParryCount}");
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+            if (bossParryCount >= bossParryThreshold)
+            {
+                stunnable.Stun(1.5f); // boss stun duration
+                bossParryCount = 0;
+
+                // Optional: also trigger cooldown to prevent spam
+                lastParryTime = Time.time;
+            }
+        }
     }
 }

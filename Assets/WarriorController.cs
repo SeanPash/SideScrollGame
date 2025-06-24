@@ -33,6 +33,8 @@ public class WarriorController : MonoBehaviour
     private readonly float[] attackSpeeds = new float[] { 1.0f, 2f, 0.7f }; // Attack, Attack2, Attack3
     private readonly float[] attackDurations = new float[] { 0.4f, 0.01f, 0.6f }; // adjust to match speed
 
+    public float[] hitboxDurations = { 0.3f, 0.25f, 0.4f };
+
     private float chargeTimer = 0f;
 
     public GameObject groundImpactPrefab;
@@ -108,6 +110,8 @@ public class WarriorController : MonoBehaviour
 
     private bool isAttacking = false;
     private ParrySystem parrySystem;
+    public GameObject attackHitbox;
+
     void Start()
     {
         ResetCombo();
@@ -878,6 +882,30 @@ if (!IsInAnyCrouch())
         animator.Play(anim, 0);
         trail.emitting = true;
 
+        if (comboStep < hitboxDurations.Length)
+        {
+            var dmg = attackHitbox.GetComponent<DealDamage>();
+dmg.ResetHit();
+
+attackHitbox.SetActive(true);
+
+float timer = 0f;
+while (timer < hitboxDurations[comboStep])
+{
+    dmg.ManualCheckHits(); // do this every frame
+    timer += Time.deltaTime;
+    yield return null;
+}
+
+            attackHitbox.SetActive(false);
+
+}
+        else
+
+        {
+            Debug.LogWarning($"[WarriorController] No hitbox duration defined for comboStep {comboStep}");
+        }
+
         yield return new WaitForSeconds(0.2f); // early cutoff if needed
         trail.emitting = false;
 
@@ -979,6 +1007,22 @@ if (!IsInAnyCrouch())
 
         float chargeRatio = Mathf.InverseLerp(minChargeTime, maxChargeTime, chargeTime);
         float damage = Mathf.Lerp(10f, 40f, chargeRatio);
+var dmg = attackHitbox.GetComponent<DealDamage>();
+dmg.ResetHit();
+
+attackHitbox.SetActive(true);
+
+float timer = 0f;
+while (timer < hitboxDurations[comboStep])
+{
+    dmg.ManualCheckHits(); // do this every frame
+    timer += Time.deltaTime;
+    yield return null;
+}
+
+        attackHitbox.SetActive(false);
+
+
 
         yield return new WaitForSeconds(0.1f); // Small delay before hit detection
 
@@ -991,7 +1035,7 @@ if (!IsInAnyCrouch())
             if (hit.CompareTag("Enemy"))
             {
                 hitEnemy = true;
-                hit.GetComponent<GolemAi>()?.TakeDamage(damage);
+                hit.GetComponent<IDamageable>()?.TakeDamage((int)damage);
             }
         }
 

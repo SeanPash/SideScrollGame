@@ -10,9 +10,14 @@ public class DealDamage : MonoBehaviour
 
 
     public bool damageWindowActive = false;
+    public int overrideDamage = -1;
+
 
     public int CalculateDamage()
     {
+        if (overrideDamage >= 0)
+            return overrideDamage;
+
         if (isChargeAttack)
         {
             float maxDamage = 8f;

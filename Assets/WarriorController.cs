@@ -30,8 +30,8 @@ public class WarriorController : MonoBehaviour
 
 
     public float chargeTimeThreshold = 1.5f;
-    private readonly float[] attackSpeeds = new float[] { 1.0f, 2f, 0.7f }; // Attack, Attack2, Attack3
-    private readonly float[] attackDurations = new float[] { 0.4f, 0.01f, 0.6f }; // adjust to match speed
+    private readonly float[] attackSpeeds = new float[] { 1.0f, 1f, 0.7f }; // Attack, Attack2, Attack3
+    private readonly float[] attackDurations = new float[] { 0.8f, 0.4f, 0.6f }; // adjust to match speed
 
     public float[] hitboxDurations = { 0.3f, 0.25f, 0.4f };
 
@@ -52,7 +52,7 @@ public class WarriorController : MonoBehaviour
     private bool isSliding = false;
     public LayerMask whatIsGround;
     private bool wasCrouching = false;
-    public float cooldownTime = 0.5f;
+    public float cooldownTime = 0.05f;
     private bool hasFinishedChargeAttack = false;
     private float flipSuppressTime = 0f;
 
@@ -514,99 +514,102 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
 
         //charge attack
 
-        if (Input.GetMouseButton(0) && !isAttacking && !isParrying && !isAttackCooldown && !isWaitingForCombo && IsGrounded())
+        if (Input.GetMouseButton(0))
         {
-            if (chargedAttackTriggered || hasFinishedChargeAttack) return;
-            chargeTimer += Time.deltaTime;
-
-            if (!isCharging && !hasFinishedChargeAttack)
+            if (!isAttacking && !isParrying && !isAttackCooldown && !isWaitingForCombo && IsGrounded())
             {
-                isCharging = true;
-                lockFlipDuringCharge = true;
-                hasPlayedChargeFinish = false;
-                rb.linearVelocity = Vector2.zero;
-                animator.Play("ChargeAttackStart");
-            }
+                if (chargedAttackTriggered || hasFinishedChargeAttack) return;
+                chargeTimer += Time.deltaTime;
 
-            // While holding, accumulate charge
-            if (isCharging)
-            {
-                // Mid charge color change
-                if (!midEffectPlayed && chargeTimer >= (maxChargeTime * 0.5f))
+                if (!isCharging && !hasFinishedChargeAttack && chargeTimer >= 0.15f)
                 {
-                    sr.color = new Color(1f, 1f, 0.5f); // yellow
-                    midEffectPlayed = true;
+                    isCharging = true;
+                    lockFlipDuringCharge = true;
+                    hasPlayedChargeFinish = false;
+                    rb.linearVelocity = Vector2.zero;
+                    animator.Play("ChargeAttackStart");
                 }
 
-                // Full charge color change
-                if (!fullEffectPlayed && chargeTimer >= maxChargeTime)
+                // While holding, accumulate charge
+                if (isCharging)
                 {
-                    sr.color = Color.red;
-                    fullEffectPlayed = true;
-                }
-
-                if (chargeTimer >= maxChargeTime && !hasPlayedChargeFinish && !chargedAttackTriggered && hasReleasedMouse)
-                {
-                    if (!PlayerStats.Instance.UseStamina(20f)) return;
-                    chargedAttackTriggered = true;
-                    hasPlayedChargeFinish = true;
-                    isCharging = false;
-
-                    StartCoroutine(DoChargedAttack(chargeTimer));
-                }
-
-            }
-        }
-        // On release
-        if (Input.GetMouseButtonUp(0))
-        {
-            hasReleasedMouse = true;
-            hasFinishedChargeAttack = false;
-
-            if (isCharging)
-            {
-                if (chargeTimer >= minChargeTime && chargeTimer < maxChargeTime)
-                {
-                    if (!PlayerStats.Instance.UseStamina(20f)) return;
-                    chargedAttackTriggered = true;
-                    hasPlayedChargeFinish = true;
-                    isCharging = false;
-                    StartCoroutine(DoChargedAttack(chargeTimer));
-                }
-                else if (chargeTimer < minChargeTime)
-                {
-                    if (!isAttacking)
+                    // Mid charge color change
+                    if (!midEffectPlayed && chargeTimer >= (maxChargeTime * 0.5f))
                     {
-                        if (IsGrounded())
-                        {
-                            if (!PlayerStats.Instance.UseStamina(10f)) return;
-                            attackCoroutine = StartCoroutine(DoComboAttack());
-                        }
-                        else
-                        {
-                            if (!PlayerStats.Instance.UseStamina(10f)) return;
-                            attackCoroutine = StartCoroutine(DoAttack(false));
-                        }
+                        sr.color = new Color(1f, 1f, 0.5f); // yellow
+                        midEffectPlayed = true;
+                    }
+
+                    // Full charge color change
+                    if (!fullEffectPlayed && chargeTimer >= maxChargeTime)
+                    {
+                        sr.color = Color.red;
+                        fullEffectPlayed = true;
+                    }
+
+                    if (chargeTimer >= maxChargeTime && !hasPlayedChargeFinish && !chargedAttackTriggered && hasReleasedMouse)
+                    {
+                        if (!PlayerStats.Instance.UseStamina(20f)) return;
+                        chargedAttackTriggered = true;
+                        hasPlayedChargeFinish = true;
+                        isCharging = false;
+
+                        StartCoroutine(DoChargedAttack(chargeTimer));
                     }
 
                 }
-
-                isCharging = false;
-                chargeTimer = 0f;
-                midEffectPlayed = false;
-                fullEffectPlayed = false;
-                sr.color = Color.white;
             }
-            else
-            {
-                chargeTimer = 0f;
-            }
-
-            // Reset this even if wasn't charging
-            chargedAttackTriggered = false;
-            hasPlayedChargeFinish = false;
-            lockFlipDuringCharge = false;
         }
+        // On release
+            if (Input.GetMouseButtonUp(0))
+            {
+                hasReleasedMouse = true;
+                hasFinishedChargeAttack = false;
+
+                if (isCharging)
+                {
+                    if (chargeTimer >= minChargeTime && chargeTimer < maxChargeTime)
+                    {
+                        if (!PlayerStats.Instance.UseStamina(20f)) return;
+                        chargedAttackTriggered = true;
+                        hasPlayedChargeFinish = true;
+                        isCharging = false;
+                        StartCoroutine(DoChargedAttack(chargeTimer));
+                    }
+                    else if (chargeTimer < minChargeTime)
+                    {
+                        if (!isAttacking)
+                        {
+                            if (IsGrounded())
+                            {
+                                if (!PlayerStats.Instance.UseStamina(10f)) return;
+                                attackCoroutine = StartCoroutine(DoComboAttack());
+                            }
+                            else
+                            {
+                                if (!PlayerStats.Instance.UseStamina(10f)) return;
+                                attackCoroutine = StartCoroutine(DoAttack(false));
+                            }
+                        }
+
+                    }
+
+                    isCharging = false;
+                    chargeTimer = 0f;
+                    midEffectPlayed = false;
+                    fullEffectPlayed = false;
+                    sr.color = Color.white;
+                }
+                else
+                {
+                    chargeTimer = 0f;
+                }
+
+                // Reset this even if wasn't charging
+                chargedAttackTriggered = false;
+                hasPlayedChargeFinish = false;
+                lockFlipDuringCharge = false;
+            }
 
 
 
@@ -848,7 +851,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
         if (!interrupted && allowCooldown)
         {
 
-            StartCoroutine(StartAttackCooldown(0.2f));
+            StartCoroutine(StartAttackCooldown(0.05f));
         }
         else
         {
@@ -884,20 +887,22 @@ if (!IsInAnyCrouch())
 
         if (comboStep < hitboxDurations.Length)
         {
+             int damage = PlayerStats.Instance.GetDamage(comboStep == 2);
             var dmg = attackHitbox.GetComponent<DealDamage>();
-dmg.ResetHit();
+            dmg.ResetHit();
+            dmg.overrideDamage = Mathf.RoundToInt(damage);
+            attackHitbox.SetActive(true);
 
-attackHitbox.SetActive(true);
-
-float timer = 0f;
-while (timer < hitboxDurations[comboStep])
-{
-    dmg.ManualCheckHits(); // do this every frame
-    timer += Time.deltaTime;
-    yield return null;
-}
+            float timer = 0f;
+            while (timer < hitboxDurations[comboStep])
+            {
+                dmg.ManualCheckHits(); // do this every frame
+                timer += Time.deltaTime;
+                yield return null;
+            }
 
             attackHitbox.SetActive(false);
+            dmg.overrideDamage = -1; 
 
 }
         else
@@ -906,11 +911,11 @@ while (timer < hitboxDurations[comboStep])
             Debug.LogWarning($"[WarriorController] No hitbox duration defined for comboStep {comboStep}");
         }
 
-        yield return new WaitForSeconds(0.2f); // early cutoff if needed
+        yield return new WaitForSeconds(0.05f); // early cutoff if needed
         trail.emitting = false;
 
         float elapsed = 0f;
-        float inputWindow = 0.4f;
+        float inputWindow = 0.2f;
         bool nextClickDetected = false;
 
         while (elapsed < inputWindow)
@@ -947,7 +952,7 @@ if (!IsInAnyCrouch())
 
         }
 
-        StartCoroutine(StartAttackCooldown(0.1f));
+        StartCoroutine(StartAttackCooldown(0.05f));
         animator.speed = 1f;
     }
 
@@ -970,7 +975,7 @@ if (!IsInAnyCrouch())
     isParrying = true;
 
     if (IsGrounded())
-        rb.velocity = new Vector2(0, rb.velocity.y);
+        rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
 
     animator.Play("Parry");
 
@@ -1006,10 +1011,10 @@ if (!IsInAnyCrouch())
         animator.Play("ChargeAttackFinish");
 
         float chargeRatio = Mathf.InverseLerp(minChargeTime, maxChargeTime, chargeTime);
-        float damage = Mathf.Lerp(10f, 40f, chargeRatio);
+        float damage = Mathf.Lerp(PlayerStats.Instance.baseDamage, 8f, chargeRatio);
 var dmg = attackHitbox.GetComponent<DealDamage>();
 dmg.ResetHit();
-
+ dmg.overrideDamage = Mathf.RoundToInt(damage);
 attackHitbox.SetActive(true);
 
 float timer = 0f;
@@ -1021,7 +1026,7 @@ while (timer < hitboxDurations[comboStep])
 }
 
         attackHitbox.SetActive(false);
-
+        dmg.overrideDamage = -1; 
 
 
         yield return new WaitForSeconds(0.1f); // Small delay before hit detection
@@ -1059,7 +1064,7 @@ if (!IsInAnyCrouch())
 }
 
 
-        StartCoroutine(StartAttackCooldown(0.2f));
+        StartCoroutine(StartAttackCooldown(0.05f));
 
         // Clean up effects
         sr.color = Color.white; // reset color

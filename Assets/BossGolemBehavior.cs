@@ -39,12 +39,17 @@ public class BossGolemBehavior : MonoBehaviour, IDamageable
 
     private bool isAttacking = false;
     private bool isInAttackCycle = false;
-    private float attackTimer = 0f;
+    private float attackTimer = 1.5f;
     private bool useFirstAttack = true;
     private bool hasRockAttacked = false;
     private bool isMoving = false;
     private bool hasSwitchedToMidOnce = false;
     public bool isHurting = false;
+    public GameObject blackoutPanel; // Assign a full-screen UI panel with black Image + CanvasGroup
+    public float fadeDuration = 1f;
+    public WarriorController warriorController; // Reference to disable movement/input
+    private bool isDead = false;
+
 
 
 
@@ -57,7 +62,7 @@ public class BossGolemBehavior : MonoBehaviour, IDamageable
 
     void Update()
     {
-        if (!IsPlayerInSight() || isHurting) return;
+    if (isDead || !IsPlayerInSight() || isHurting) return;
 
         float dist = Vector2.Distance(transform.position, player.position);
         FacePlayer();
@@ -191,15 +196,66 @@ public class BossGolemBehavior : MonoBehaviour, IDamageable
     {
         currentForm = GolemForm.Reinforced;
         isInvulnerable = true;
+        isAttacking = true;
+        isInAttackCycle = false;
+        isHurting = false;
+        rb.linearVelocity = Vector2.zero;
+
+        // Disable player movement script
+        if (warriorController != null)
+            warriorController.enabled = false;
+
+        Rigidbody2D playerRb = player.GetComponent<Rigidbody2D>();
+        if (playerRb != null)
+        {
+            playerRb.linearVelocity = Vector2.zero;
+
+            Vector2 pushDir = (player.position - transform.position).normalized;
+            pushDir.y = 0f;
+            pushDir.Normalize();
+
+            float pushDistance = 2f;   // how far to move
+            float pushDuration = 0.25f; // how long it takes
+            float elapsed = 0f;
+            Vector3 startPos = player.position;
+            Vector3 targetPos = startPos + (Vector3)(pushDir * pushDistance);
+
+            // Smooth move to targetPos
+            while (elapsed < pushDuration)
+            {
+                elapsed += Time.deltaTime;
+                player.position = Vector3.Lerp(startPos, targetPos, elapsed / pushDuration);
+                yield return null;
+            }
+
+            player.position = targetPos; // snap to final
+        }
+
+        blackoutPanel.SetActive(true);
+        CanvasGroup cg = blackoutPanel.GetComponent<CanvasGroup>();
+        if (cg != null) cg.alpha = 1f;
+
+        // Freeze boss during transformation
         rb.linearVelocity = Vector2.zero;
         animator.Play("Enemy Ability");
 
-        yield return new WaitForSeconds(1.2f);
+        yield return new WaitForSeconds(1f); // Let the ability play out
 
         SwitchToForm(GolemForm.Reinforced);
-        isInvulnerable = false;
-    }
+        animator.Play("Enemy Idle");
 
+        yield return new WaitForSeconds(0.5f);
+
+        // Return screen to normal
+        blackoutPanel.SetActive(false);
+
+        // Enable player movement again
+        if (warriorController != null)
+            warriorController.enabled = true;
+
+        isInvulnerable = false;
+        isAttacking = false;
+    }
     void HandleReinforcedBehavior(float dist)
     {
         if (isHurting) return;
@@ -301,48 +357,43 @@ public class BossGolemBehavior : MonoBehaviour, IDamageable
         return animator.GetCurrentAnimatorStateInfo(0).IsName(name);
     }
 
-   public void TakeDamage(int damage)
-{
+    public void TakeDamage(int damage)
+    {
         if (isInvulnerable)
         {
-                    Debug.Log("[BossGolem] Ignored damage: Invulnerable.");
+            Debug.Log("[BossGolem] Ignored damage: Invulnerable.");
             return;
         }
-    currentHealth -= damage;
-    Debug.Log($"Boss took {damage} damage. Current HP: {currentHealth}");
+        currentHealth -= damage;
+        Debug.Log($"Boss took {damage} damage. Current HP: {currentHealth}");
 
-    StartCoroutine(PlayHurtEffect());
+        bool isAttackingNow = IsInAnimation("Enemy Attack 1") || IsInAnimation("Enemy Attack 2") || IsInAnimation("Enemy Attack 3");
+        StartCoroutine(PlayHurtEffect(isAttackingNow));
+        if (currentHealth <= maxHealth / 2f && currentForm != GolemForm.Reinforced)
+        {
+            Debug.Log("[BossGolem] Triggering transition to reinforced phase.");
+            StartCoroutine(TransitionToReinforcedPhase());
+        }
 
-    if (currentHealth <= maxHealth / 2f && currentForm != GolemForm.Reinforced)
-    {
-                Debug.Log("[BossGolem] Triggering transition to reinforced phase.");
-        StartCoroutine(TransitionToReinforcedPhase());
+        if (currentHealth <= 0)
+        {
+            Debug.Log("[BossGolem] Triggering death.");
+            rb.linearVelocity = Vector2.zero;
+            StartCoroutine(HandleDeath());
+        }
     }
 
-    if (currentHealth <= 0)
-    {
-        Debug.Log("[BossGolem] Triggering death.");
-        animator.Play("Enemy Death, 0");
-        rb.linearVelocity = Vector2.zero;
-        this.enabled = false;
-    }
-}
-
-    IEnumerator PlayHurtEffect()
+    IEnumerator PlayHurtEffect(bool skipAnimation)
     {
         isHurting = true;
 
-        // Flash red
+        // Flash red to show damage
         spriteRenderer.color = Color.red;
 
-        // Play the correct "Enemy Hit" animation depending on the current form
-        if (currentForm == GolemForm.Base || currentForm == GolemForm.Mid)
+        if (!skipAnimation)
         {
             animator.Play("Enemy Hit");
-        }
-        else if (currentForm == GolemForm.Reinforced)
-        {
-            animator.Play("Enemy Hurt"); // or use "Enemy Hit" if same naming
+
         }
 
         yield return new WaitForSeconds(0.2f);
@@ -350,12 +401,44 @@ public class BossGolemBehavior : MonoBehaviour, IDamageable
         spriteRenderer.color = Color.white;
         isHurting = false;
 
-        // Optional: return to idle manually if not handled in Animator transitions
-        if (!isAttacking && !isInAttackCycle)
-        {
+        // Optional: reset to idle only if not attacking
+        if (!isAttacking && !isInAttackCycle && !skipAnimation)
             animator.Play("Enemy Idle");
-        }
     }
+    IEnumerator FadeBlack(bool fadeIn)
+    {
+        CanvasGroup cg = blackoutPanel.GetComponent<CanvasGroup>();
+        if (cg == null) yield break;
+
+        float targetAlpha = fadeIn ? 1f : 0f;
+        float startAlpha = cg.alpha;
+        float t = 0f;
+
+        while (t < fadeDuration)
+        {
+            t += Time.deltaTime;
+            float blend = Mathf.Lerp(startAlpha, targetAlpha, t / fadeDuration);
+            cg.alpha = blend;
+            yield return null;
+        }
+
+        cg.alpha = targetAlpha;
+    }
+    IEnumerator HandleDeath()
+{
+    isDead = true;
+    isAttacking = true;
+    isHurting = true;
+
+    SwitchToForm(GolemForm.Base);
+
+    animator.Play("Enemy Death");
+
+    yield return new WaitForSeconds(.5f); // Match your death animation length
+
+    Destroy(gameObject);
+}
+
 
 
 }

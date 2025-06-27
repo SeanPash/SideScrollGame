@@ -1,11 +1,16 @@
 using UnityEngine;
 using System.Collections;
 
-public class RegularGolemBehavior : MonoBehaviour
+public class RegularGolemBehavior : MonoBehaviour, IDamageable
 {
     public enum GolemForm { Base, Mid }
 
     public GolemForm currentForm = GolemForm.Base;
+    [Header("Stats")]
+    public float maxHealth = 30f;
+    private float currentHealth;
+    private bool isDead = false;
+    public bool isHurting = false;
 
     [Header("Refs")]
     public Animator animator;
@@ -38,62 +43,64 @@ public class RegularGolemBehavior : MonoBehaviour
 
     void Start()
     {
+        currentHealth = maxHealth;
         SwitchToForm(GolemForm.Base);
     }
 
     void Update()
-{
-    if (!IsPlayerInSight()) return;
-
-    float dist = Vector2.Distance(transform.position, player.position);
-    FacePlayer();
-
-    if (currentForm == GolemForm.Base)
     {
-        // Determine if should move
-        if (dist > attackRange)
-        {
-            MoveTowardPlayer();
-        }
-        else if (!hasRockAttacked && !isAttacking)
-        {
-            StartCoroutine(RockAttackThenTransform());
-        }
+            if (isDead || isHurting || !IsPlayerInSight()) return;
+        if (!IsPlayerInSight()) return;
 
-        // Animate only on change
-        bool currentlyMoving = Mathf.Abs(rb.linearVelocity.x) > 0.2f;
+        float dist = Vector2.Distance(transform.position, player.position);
+        FacePlayer();
 
-        if (currentlyMoving != isMoving)
+        if (currentForm == GolemForm.Base)
         {
-            isMoving = currentlyMoving;
-
-            if (isMoving)
+            // Determine if should move
+            if (dist > attackRange)
             {
-                animator.Play("Enemy Run", 0);
+                MoveTowardPlayer();
+            }
+            else if (!hasRockAttacked && !isAttacking)
+            {
+                StartCoroutine(RockAttackThenTransform());
+            }
+
+            // Animate only on change
+            bool currentlyMoving = Mathf.Abs(rb.linearVelocity.x) > 0.2f;
+
+            if (currentlyMoving != isMoving)
+            {
+                isMoving = currentlyMoving;
+
+                if (isMoving)
+                {
+                    animator.Play("Enemy Run", 0);
+                }
+                else
+                {
+                    animator.Play("Enemy Idle", 0);
+                }
+            }
+        }
+        else if (currentForm == GolemForm.Mid)
+        {
+            if (!isInAttackCycle)
+            {
+                StartCoroutine(AttackCycle());
             }
             else
             {
-                animator.Play("Enemy Idle", 0);
-            }
-        }
-    }
-    else if (currentForm == GolemForm.Mid)
-    {
-        if (!isInAttackCycle)
-        {
-            StartCoroutine(AttackCycle());
-        }
-        else
-        {
-            attackTimer -= Time.deltaTime;
+                attackTimer -= Time.deltaTime;
 
-            if (attackTimer <= 0f && dist > attackRange)
-            {
-                StartCoroutine(ResetToBaseForm());
+                if (attackTimer <= 0f && dist > attackRange)
+                {
+                    StartCoroutine(ResetToBaseForm());
+                }
             }
         }
     }
-}
 
 
 
@@ -102,7 +109,7 @@ public class RegularGolemBehavior : MonoBehaviour
         if (isAttacking || isInAttackCycle) return;
 
         Vector2 dir = (player.position - transform.position).normalized;
-        rb.linearVelocity  = new Vector2(dir.x * moveSpeed, rb.linearVelocity .y);
+        rb.linearVelocity = new Vector2(dir.x * moveSpeed, rb.linearVelocity.y);
         if (!IsInAnimation("Enemy Run"))
         {
             animator.Play("Enemy Run", 0);
@@ -113,7 +120,7 @@ public class RegularGolemBehavior : MonoBehaviour
     {
         isAttacking = true;
         hasRockAttacked = true;
-        rb.linearVelocity  = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
 
         // Step 1: Rock attack
         animator.Play("Enemy Attack 1");
@@ -134,7 +141,7 @@ public class RegularGolemBehavior : MonoBehaviour
             float dist = Vector2.Distance(transform.position, player.position);
             if (dist <= attackRange)
             {
-                rb.linearVelocity  = Vector2.zero;
+                rb.linearVelocity = Vector2.zero;
                 animator.Play(useFirstAttack ? "Enemy Attack 2" : "Enemy Attack 3");
                 useFirstAttack = !useFirstAttack;
                 yield return new WaitForSeconds(1f); // attack interval
@@ -199,6 +206,65 @@ public class RegularGolemBehavior : MonoBehaviour
     {
         return animator.GetCurrentAnimatorStateInfo(0).IsName(name);
     }
+    public void TakeDamage(int damage)
+    {
+        if (isDead) return;
+
+        currentHealth -= damage;
+        Debug.Log($"[RegularGolem] Took {damage} damage. HP: {currentHealth}");
+
+        StartCoroutine(PlayHurtEffect());
+
+        if (currentHealth <= 0)
+        {
+            StartCoroutine(HandleDeath());
+        }
+    }
+
+    IEnumerator PlayHurtEffect()
+{
+    isHurting = true;
+
+    // Flash red to show damage
+    spriteRenderer.color = Color.red;
+
+    // Check if it's currently in an attack animation
+    bool isInAttackAnim = IsInAnimation("Enemy Attack 1") || IsInAnimation("Enemy Attack 2") || IsInAnimation("Enemy Attack 3");
+
+    // Only play "Enemy Hit" animation if not attacking
+    if (!isInAttackAnim)
+    {
+        animator.Play("Enemy Hit");
+    }
+
+    yield return new WaitForSeconds(0.2f);
+
+    spriteRenderer.color = Color.white;
+    isHurting = false;
+
+    // Only return to idle if not attacking or in attack cycle
+    if (!isAttacking && !isInAttackCycle && !isInAttackAnim)
+    {
+        animator.Play("Enemy Idle");
+    }
+}
+
+    IEnumerator HandleDeath()
+    {
+        isDead = true;
+        isAttacking = true;
+        isHurting = true;
+        rb.linearVelocity = Vector2.zero;
+
+        animator.Play("Enemy Death");
+
+        yield return new WaitForSeconds(0.5f);
+
+        Destroy(gameObject);
+    }
+
+
+
 
 
 }

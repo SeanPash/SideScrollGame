@@ -61,5 +61,10 @@ public class PlayerStats : MonoBehaviour
     {
         return isFinalHit ? baseDamage + finalComboBonus : baseDamage;
     }
+    public bool HasEnoughStamina(float amount)
+    {
+        return currentStamina >= amount;
+    }
+
 
 }

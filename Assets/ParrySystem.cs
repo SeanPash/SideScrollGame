@@ -9,21 +9,26 @@ public class ParrySystem : MonoBehaviour
     [Header("Boss Parry Logic")]
     private int bossParryCount = 0;
     public int bossParryThreshold = 2; // e.g., 2 parries to stun
+    public bool didSuccessfulParry = false;
+
 
     public void Parry(GameObject target)
     {
+    didSuccessfulParry = true;
+        Debug.Log("Trying to parry: " + target.name);
         if (target == null) return;
 
         IStunnable stunnable = target.GetComponent<IStunnable>();
         if (stunnable == null) return;
 
+        // Check if target is already in parry cooldown
+        var handler = target.GetComponent<GolemStunHandler>();
+        if (handler != null && handler.IsInParryCooldown) return;
+
         if (target.CompareTag("Enemy"))
         {
-            if (Time.time - lastParryTime >= regularParryCooldown)
-            {
-                stunnable.Stun(1f); // regular enemies
-                lastParryTime = Time.time;
-            }
+            stunnable.Stun(1f);
+            lastParryTime = Time.time;
         }
         else if (target.CompareTag("Boss"))
         {
@@ -32,10 +37,8 @@ public class ParrySystem : MonoBehaviour
 
             if (bossParryCount >= bossParryThreshold)
             {
-                stunnable.Stun(1.5f); // boss stun duration
+                stunnable.Stun(1.5f);
                 bossParryCount = 0;
-
-                // Optional: also trigger cooldown to prevent spam
                 lastParryTime = Time.time;
             }
         }

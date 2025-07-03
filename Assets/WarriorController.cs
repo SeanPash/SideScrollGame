@@ -24,6 +24,8 @@ public class WarriorController : MonoBehaviour
     private bool isGrounded;
 
     private int currentWallID = -1;
+    private float hitboxDelay = .15f;
+    public float chargedHitboxDelay = .2f;
 
     public LayerMask whatIsWall;
     private bool isDownwardAttacking = false;
@@ -87,6 +89,7 @@ public class WarriorController : MonoBehaviour
 
     public TrailRenderer trail;
     private Coroutine attackCoroutine;
+    public GameObject parryHitbox; 
     private Coroutine parryCoroutine;
 
     private bool isAttackCooldown = false;
@@ -587,7 +590,6 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
                             }
                             else
                             {
-                                if (!PlayerStats.Instance.UseStamina(10f)) return;
                                 attackCoroutine = StartCoroutine(DoAttack(false));
                             }
                         }
@@ -887,6 +889,7 @@ if (!IsInAnyCrouch())
 
         if (comboStep < hitboxDurations.Length)
         {
+                yield return new WaitForSeconds(hitboxDelay);
              int damage = PlayerStats.Instance.GetDamage(comboStep == 2);
             var dmg = attackHitbox.GetComponent<DealDamage>();
             dmg.ResetHit();
@@ -972,32 +975,52 @@ if (!IsInAnyCrouch())
     ResetCombo();
 
     if (isParrying || isParryCooldown) yield break;
+
+    // Check if we *can* afford 10 stamina, but don't consume it yet
+    if (!PlayerStats.Instance.HasEnoughStamina(10f))
+    {
+        Debug.Log("Not enough stamina to parry.");
+        yield break;
+    }
+
     isParrying = true;
+    parrySystem.didSuccessfulParry = false; // Reset parry success flag
 
     if (IsGrounded())
         rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
 
     animator.Play("Parry");
+    Debug.Log("Parry started — hitbox activated.");
+
+    parryHitbox.SetActive(true);
 
     yield return new WaitForSeconds(0.3f);
 
-    Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 1.2f);
-    foreach (var hit in hits)
+    parryHitbox.SetActive(false);
+
+    if (!parrySystem.didSuccessfulParry)
     {
-        if (hit.CompareTag("Enemy") || hit.CompareTag("Boss"))
-        {
-            parrySystem.Parry(hit.gameObject); 
-        }
+        PlayerStats.Instance.UseStamina(10f); // Only use stamina on failed parry
+        Debug.Log("Parry failed — 10 stamina used.");
     }
+    else
+    {
+        Debug.Log("Parry successful — no stamina used.");
+    }
+
+    yield return new WaitForSeconds(0.2f); // rest of animation lock time
 
     isParrying = false;
 
-    if (Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0)
-        animator.Play("Run");
-    else if (!IsGrounded())
-        animator.Play("JumptoFall");
-    else if (!IsInAnyCrouch())
-        animator.Play("Idle");
+    if (!IsInAnyCrouch())
+    {
+        if (!IsGrounded())
+            animator.Play("JumptoFall");
+        else if (Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0)
+            animator.Play("Run");
+        else
+            animator.Play("Idle");
+    }
 
     StartCoroutine(StartParryCooldown(0.2f));
 }
@@ -1012,6 +1035,7 @@ if (!IsInAnyCrouch())
 
         float chargeRatio = Mathf.InverseLerp(minChargeTime, maxChargeTime, chargeTime);
         float damage = Mathf.Lerp(PlayerStats.Instance.baseDamage, 8f, chargeRatio);
+            yield return new WaitForSeconds(chargedHitboxDelay);
 var dmg = attackHitbox.GetComponent<DealDamage>();
 dmg.ResetHit();
  dmg.overrideDamage = Mathf.RoundToInt(damage);

@@ -42,12 +42,6 @@ public class DealDamage : MonoBehaviour
             damageable.TakeDamage(damage);
             hasHit = true;
         }
-
-        var stunnable = other.GetComponentInParent<IStunnable>();
-        if (stunnable != null)
-        {
-            stunnable.Stun(1f);
-        }
     }
 }
 
@@ -81,12 +75,6 @@ public class DealDamage : MonoBehaviour
             {
                 damageable.TakeDamage(CalculateDamage());
                 hasHit = true;
-            }
-
-            IStunnable stunnable = hit.GetComponentInParent<IStunnable>();
-            if (stunnable != null)
-            {
-                stunnable.Stun(1f);
             }
         }
     }

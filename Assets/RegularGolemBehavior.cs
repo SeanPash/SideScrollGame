@@ -1,8 +1,9 @@
 using UnityEngine;
 using System.Collections;
 
-public class RegularGolemBehavior : MonoBehaviour, IDamageable
+public class RegularGolemBehavior : MonoBehaviour, IDamageable, IAttackState
 {
+    public bool IsAttackingNow { get; private set; } = false; 
     public enum GolemForm { Base, Mid }
 
     public GolemForm currentForm = GolemForm.Base;
@@ -38,6 +39,8 @@ public class RegularGolemBehavior : MonoBehaviour, IDamageable
     private bool useFirstAttack = true;
     private bool hasRockAttacked = false;
     private bool isMoving = false;
+    private GolemStunHandler stunHandler;
+
 
 
 
@@ -45,11 +48,14 @@ public class RegularGolemBehavior : MonoBehaviour, IDamageable
     {
         currentHealth = maxHealth;
         SwitchToForm(GolemForm.Base);
+        stunHandler = GetComponent<GolemStunHandler>();
     }
 
     void Update()
     {
-            if (isDead || isHurting || !IsPlayerInSight()) return;
+        if ((stunHandler != null && stunHandler.IsStunned()))
+            return;
+        if (isDead || isHurting || !IsPlayerInSight()) return;
         if (!IsPlayerInSight()) return;
 
         float dist = Vector2.Distance(transform.position, player.position);
@@ -222,32 +228,32 @@ public class RegularGolemBehavior : MonoBehaviour, IDamageable
     }
 
     IEnumerator PlayHurtEffect()
-{
-    isHurting = true;
-
-    // Flash red to show damage
-    spriteRenderer.color = Color.red;
-
-    // Check if it's currently in an attack animation
-    bool isInAttackAnim = IsInAnimation("Enemy Attack 1") || IsInAnimation("Enemy Attack 2") || IsInAnimation("Enemy Attack 3");
-
-    // Only play "Enemy Hit" animation if not attacking
-    if (!isInAttackAnim)
     {
-        animator.Play("Enemy Hit");
+        isHurting = true;
+
+        // Flash red to show damage
+        spriteRenderer.color = Color.red;
+
+        // Check if it's currently in an attack animation
+        bool isInAttackAnim = IsInAnimation("Enemy Attack 1") || IsInAnimation("Enemy Attack 2") || IsInAnimation("Enemy Attack 3");
+
+        // Only play "Enemy Hit" animation if not attacking
+        if (!isInAttackAnim)
+        {
+            animator.Play("Enemy Hit");
+        }
+
+        yield return new WaitForSeconds(0.2f);
+
+        spriteRenderer.color = Color.white;
+        isHurting = false;
+
+        // Only return to idle if not attacking or in attack cycle
+        if (!isAttacking && !isInAttackCycle && !isInAttackAnim)
+        {
+            animator.Play("Enemy Idle");
+        }
     }
-
-    yield return new WaitForSeconds(0.2f);
-
-    spriteRenderer.color = Color.white;
-    isHurting = false;
-
-    // Only return to idle if not attacking or in attack cycle
-    if (!isAttacking && !isInAttackCycle && !isInAttackAnim)
-    {
-        animator.Play("Enemy Idle");
-    }
-}
 
     IEnumerator HandleDeath()
     {
@@ -262,9 +268,17 @@ public class RegularGolemBehavior : MonoBehaviour, IDamageable
 
         Destroy(gameObject);
     }
+    public bool IsAttacking()
+{
+     AnimatorStateInfo info = animator.GetCurrentAnimatorStateInfo(0);
+    
+    bool isAttackAnim = info.IsName("Enemy Attack 1") ||
+                        info.IsName("Enemy Attack 2") ||
+                        info.IsName("Enemy Attack 3");
 
-
-
+    // Only return true if the animation is in its middle section (e.g. 30%-90%)
+    return isAttackAnim && info.normalizedTime >= 0.15f && info.normalizedTime <= 0.4f;
+}
 
 
 }

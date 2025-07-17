@@ -39,7 +39,7 @@ public class RegularGolemBehavior : MonoBehaviour, IDamageable, IAttackState
     private bool useFirstAttack = true;
     private bool hasRockAttacked = false;
     private bool isMoving = false;
-    private GolemStunHandler stunHandler;
+    private RegularGolemStun stunHandler;
 
 
 
@@ -48,7 +48,7 @@ public class RegularGolemBehavior : MonoBehaviour, IDamageable, IAttackState
     {
         currentHealth = maxHealth;
         SwitchToForm(GolemForm.Base);
-        stunHandler = GetComponent<GolemStunHandler>();
+        stunHandler = GetComponent<RegularGolemStun>();
     }
 
     void Update()
@@ -279,6 +279,16 @@ public class RegularGolemBehavior : MonoBehaviour, IDamageable, IAttackState
     // Only return true if the animation is in its middle section (e.g. 30%-90%)
     return isAttackAnim && info.normalizedTime >= 0.15f && info.normalizedTime <= 0.4f;
 }
+public void Parry()
+{
+    Debug.Log("[RegularGolem] Parried!");
 
+    // Trigger stun effect
+    RegularGolemStun stun = GetComponent<RegularGolemStun>();
+    if (stun != null)
+    {
+        stun.RegisterParry();
+    }
+}
 
 }

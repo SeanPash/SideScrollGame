@@ -7,19 +7,22 @@ public class ParryHitbox : MonoBehaviour
 
     private bool parryTriggered = false;
 
+    public bool parrySucceeded = false;
+
     void OnEnable()
     {
         parryTriggered = false;
+        parrySucceeded = false;
         Debug.Log("ParryHitbox activated — checking manually.");
 
-        ManualCheckParry(); // do a manual overlap check right when it's enabled
+        ManualCheckParry();
     }
 
     private void ManualCheckParry()
     {
         Collider2D[] hits = Physics2D.OverlapBoxAll(
             transform.position,
-            GetComponent<Collider2D>().bounds.size,
+            GetComponent<Collider2D>().bounds.size + new Vector3(1f, 0, 0),
             0f,
             targetMask
         );
@@ -28,19 +31,28 @@ public class ParryHitbox : MonoBehaviour
         {
             if (parryTriggered) break;
 
-            if (hit.CompareTag("Enemy") || hit.CompareTag("Boss"))
+            IAttackState attacker = hit.GetComponentInParent<IAttackState>();
+            if (attacker != null)
             {
-                var attackState = hit.GetComponentInParent<IAttackState>();
-                if (attackState != null && attackState.IsAttacking())
+                bool attacking = attacker.IsAttacking();
+                Debug.Log($"[ParryHitbox] Checking {hit.name} | Attacking: {attacking}");
+
+                if (attacking)
                 {
-                    Debug.Log("[ParryHitbox] Parrying: " + hit.name);
-                    parrySystem.Parry(hit.gameObject);
+                    Debug.Log($"[ParryHitbox] Parrying: {hit.name} (Resolved to: {attacker})");
+                    attacker.Parry(); // This should trigger the stun or effect
+                    parrySucceeded = true;
                     parryTriggered = true;
+                    return;
                 }
                 else
                 {
-                    Debug.Log($"[ParryHitbox] Ignored parry — {hit.name} not attacking.");
+                    Debug.Log($"[ParryHitbox] {hit.name} was not attacking — parry failed.");
                 }
+            }
+            else
+            {
+                Debug.LogWarning($"[ParryHitbox] No IAttackState found on {hit.name} or parent.");
             }
         }
     }

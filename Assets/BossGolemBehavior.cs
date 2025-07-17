@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-public class BossGolemBehavior : MonoBehaviour, IDamageable
+public class BossGolemBehavior : MonoBehaviour, IDamageable, IAttackState
 {
     public enum GolemForm { Base, Mid, Reinforced }
 
@@ -49,6 +49,8 @@ public class BossGolemBehavior : MonoBehaviour, IDamageable
     public float fadeDuration = 1f;
     public WarriorController warriorController; // Reference to disable movement/input
     private bool isDead = false;
+    private bool canBeParried = false;
+
 
 
 
@@ -62,7 +64,8 @@ public class BossGolemBehavior : MonoBehaviour, IDamageable
 
     void Update()
     {
-    if (isDead || !IsPlayerInSight() || isHurting) return;
+        
+        if (isDead || !IsPlayerInSight() || isHurting) return;
 
         float dist = Vector2.Distance(transform.position, player.position);
         FacePlayer();
@@ -135,37 +138,31 @@ public class BossGolemBehavior : MonoBehaviour, IDamageable
 
     }
 
-    IEnumerator AttackCycle()
-    {
-        if (isHurting) yield break;
-        isInAttackCycle = true;
-        isAttacking = true;
-        attackTimer = attackCycleDuration;
+ IEnumerator AttackCycle()
+{
+    if (isHurting) yield break;
+    isAttacking = true;
+    isInAttackCycle = true;
 
-        while (attackTimer > 0f)
-        {
-            float dist = Vector2.Distance(transform.position, player.position);
+    rb.linearVelocity = Vector2.zero;
 
-            if (dist <= attackRange)
-            {
-                rb.linearVelocity = Vector2.zero;
-                animator.Play(useFirstAttack ? "Enemy Attack 2" : "Enemy Attack 3");
-                useFirstAttack = !useFirstAttack;
+    animator.Play(useFirstAttack ? "Enemy Attack 2" : "Enemy Attack 3");
+    useFirstAttack = !useFirstAttack;
 
-                yield return new WaitForSeconds(1f); // attack animation delay
-                attackTimer -= 1f;
-            }
-            else
-            {
-                yield return null;
-            }
-        }
+    yield return new WaitForSeconds(0.05f); // Wind-up buffer
 
-        isAttacking = false;
-        isInAttackCycle = false;
+    canBeParried = true;
+    yield return new WaitForSeconds(0.25f);  
+    canBeParried = false;
 
+    // Wait out the rest of the animation so it doesn’t get cut off
+    yield return new WaitForSeconds(1.0f); // total wait = ~1.15s
 
-    }
+    isAttacking = false;
+    isInAttackCycle = false;
+}
+
+    
 
     IEnumerator ResetToBaseForm()
     {
@@ -425,19 +422,44 @@ public class BossGolemBehavior : MonoBehaviour, IDamageable
         cg.alpha = targetAlpha;
     }
     IEnumerator HandleDeath()
+    {
+        isDead = true;
+        isAttacking = true;
+        isHurting = true;
+
+        SwitchToForm(GolemForm.Base);
+
+        animator.Play("Enemy Death");
+
+        yield return new WaitForSeconds(.5f); // Match your death animation length
+
+        Destroy(gameObject);
+    }
+public bool IsAttacking()
 {
-    isDead = true;
-    isAttacking = true;
-    isHurting = true;
-
-    SwitchToForm(GolemForm.Base);
-
-    animator.Play("Enemy Death");
-
-    yield return new WaitForSeconds(.5f); // Match your death animation length
-
-    Destroy(gameObject);
+    var info = animator.GetCurrentAnimatorStateInfo(0);
+    return canBeParried && (
+        info.IsName("Enemy Attack 1") ||
+        info.IsName("Enemy Attack 2") ||
+        info.IsName("Enemy Attack 3")
+    );
 }
+
+
+public void Parry()
+{
+    Debug.Log("[BossGolem] Stunned by parry!");
+    
+    // Trigger the stun logic
+    BossGolemStun stunComponent = GetComponent<BossGolemStun>();
+    if (stunComponent != null)
+    {
+        stunComponent.RegisterParry();
+    }
+}
+
+
+
 
 
 

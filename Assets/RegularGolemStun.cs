@@ -1,22 +1,40 @@
 using UnityEngine;
 using System.Collections;
 
-public class GolemStunHandler : MonoBehaviour, IStunnable
+public class RegularGolemStun : MonoBehaviour, IStunnable
 {
     [Header("Stun Settings")]
     public float stunDuration = 1f;
-    public float stunCooldown = 5f;
+    public float stunCooldown = 4f;
 
+    [Header("Icon")]
+    public GameObject stunIconPrefab;
+    public Vector3 iconOffset = new Vector3(0.8f, 1.2f, 0f);
+
+    private GameObject stunIconInstance;
     private float lastStunTime = -Mathf.Infinity;
     private bool isStunned = false;
-
     private Animator animator;
-    private SpriteRenderer sr;
 
     void Awake()
     {
         animator = GetComponent<Animator>();
-        sr = GetComponent<SpriteRenderer>();
+
+        if (stunIconPrefab != null)
+        {
+            stunIconInstance = Instantiate(stunIconPrefab, transform.position + iconOffset, Quaternion.identity);
+            stunIconInstance.transform.SetParent(null); // not a child — follows via script
+            stunIconInstance.SetActive(false);
+        }
+    }
+
+    void Update()
+    {
+        if (stunIconInstance != null && isStunned)
+        {
+            Vector3 bobbingOffset = Vector3.up * Mathf.Sin(Time.time * 2f) * 0.1f;
+            stunIconInstance.transform.position = transform.position + iconOffset + bobbingOffset;
+        }
     }
 
     public void Stun(float duration)
@@ -24,32 +42,37 @@ public class GolemStunHandler : MonoBehaviour, IStunnable
         if (Time.time - lastStunTime < stunCooldown || isStunned)
             return;
 
-        lastStunTime = Time.time;
-Debug.Log("Golem stunned! Caller:\n" + UnityEngine.StackTraceUtility.ExtractStackTrace());
-        StartCoroutine(HandleStun());
+        StartCoroutine(HandleStun(duration));
     }
 
-    private IEnumerator HandleStun()
+    public void RegisterParry()
     {
-        isStunned = true;
-
-        if (animator != null)
-            animator.Play("Enemy Hit");
-
-        if (sr != null)
-            sr.color = Color.red;
-
-        yield return new WaitForSeconds(stunDuration);
-
-        if (sr != null)
-            sr.color = Color.white;
-
-        isStunned = false;
+        Debug.Log("[GolemStun] Parry registered → applying stun");
+        Stun(stunDuration);
     }
 
-    public bool IsStunned()
-    {
-        return isStunned;
-    }
+    private IEnumerator HandleStun(float duration)
+{
+    isStunned = true;
+    lastStunTime = Time.time;
+
+    if (animator != null)
+        animator.Play("Enemy Hit");
+
+    if (stunIconInstance != null)
+        stunIconInstance.SetActive(true);
+
+    yield return new WaitForSeconds(duration);
+
+    isStunned = false;
+
+    if (stunIconInstance != null)
+        stunIconInstance.SetActive(false);
+}
+
+
+
+ public bool IsStunned() => isStunned;
+
     public bool IsInParryCooldown => Time.time - lastStunTime < stunCooldown;
 }

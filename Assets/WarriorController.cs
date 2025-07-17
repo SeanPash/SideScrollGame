@@ -89,7 +89,7 @@ public class WarriorController : MonoBehaviour
 
     public TrailRenderer trail;
     private Coroutine attackCoroutine;
-    public GameObject parryHitbox; 
+    public ParryHitbox parryHitbox; 
     private Coroutine parryCoroutine;
 
     private bool isAttackCooldown = false;
@@ -970,47 +970,49 @@ if (!IsInAnyCrouch())
 
 
 
-   IEnumerator DoParry()
+ IEnumerator DoParry()
 {
     ResetCombo();
 
     if (isParrying || isParryCooldown) yield break;
 
-    // Check if we *can* afford 10 stamina, but don't consume it yet
-    if (!PlayerStats.Instance.HasEnoughStamina(10f))
+    // Don't use stamina yet — wait to see if parry succeeds
+    if (!PlayerStats.Instance.HasEnoughStamina(10))
     {
         Debug.Log("Not enough stamina to parry.");
         yield break;
     }
 
     isParrying = true;
-    parrySystem.didSuccessfulParry = false; // Reset parry success flag
 
     if (IsGrounded())
         rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
 
     animator.Play("Parry");
+
     Debug.Log("Parry started — hitbox activated.");
 
-    parryHitbox.SetActive(true);
+    // Reset hitbox parry state
+    parryHitbox.parrySucceeded = false;
+    parryHitbox.gameObject.SetActive(true);
 
-    yield return new WaitForSeconds(0.3f);
+    yield return new WaitForSeconds(0.2f); // parry window
 
-    parryHitbox.SetActive(false);
+    parryHitbox.gameObject.SetActive(false);
 
-    if (!parrySystem.didSuccessfulParry)
+    yield return new WaitForSeconds(0.2f); // lock time
+
+    isParrying = false;
+
+    if (!parryHitbox.parrySucceeded)
     {
-        PlayerStats.Instance.UseStamina(10f); // Only use stamina on failed parry
-        Debug.Log("Parry failed — 10 stamina used.");
+        PlayerStats.Instance.UseStamina(10f);
+        Debug.Log("Parry missed — stamina used.");
     }
     else
     {
         Debug.Log("Parry successful — no stamina used.");
     }
-
-    yield return new WaitForSeconds(0.2f); // rest of animation lock time
-
-    isParrying = false;
 
     if (!IsInAnyCrouch())
     {
@@ -1024,6 +1026,8 @@ if (!IsInAnyCrouch())
 
     StartCoroutine(StartParryCooldown(0.2f));
 }
+
+
 
     IEnumerator DoChargedAttack(float chargeTime)
     {

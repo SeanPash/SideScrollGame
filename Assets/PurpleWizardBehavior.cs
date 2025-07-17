@@ -1,7 +1,7 @@
     using UnityEngine;
     using System.Collections;
 
-public class PurpleWizardBehavior : MonoBehaviour, IDamageable
+public class PurpleWizardBehavior : MonoBehaviour, IDamageable, IAttackState
 {
     public float detectionRange = 8f;
     public float attackRange = 1.5f;
@@ -91,14 +91,14 @@ public class PurpleWizardBehavior : MonoBehaviour, IDamageable
 
     void Idle()
     {
-            if (isDead) return;
+        if (isDead) return;
         rb.linearVelocity = Vector2.zero;
         animator.Play("Idle");
     }
 
     void MoveTowardPlayer()
     {
-            if (isDead) return;
+        if (isDead) return;
         Vector2 direction = (player.position - transform.position).normalized;
         rb.linearVelocity = new Vector2(direction.x * moveSpeed, rb.linearVelocity.y);
         animator.Play("Run");
@@ -149,12 +149,12 @@ public class PurpleWizardBehavior : MonoBehaviour, IDamageable
     IEnumerator HandleDeath()
     {
         isDead = true;
-            isAttacking = false;
+        isAttacking = false;
         rb.linearVelocity = Vector2.zero;
 
         animator.Play("Death");
 
-        yield return new WaitForSeconds(1f); 
+        yield return new WaitForSeconds(1f);
 
         Destroy(gameObject);
     }
@@ -163,5 +163,26 @@ public class PurpleWizardBehavior : MonoBehaviour, IDamageable
     {
         return animator.GetCurrentAnimatorStateInfo(0).IsName(name);
     }
+    public bool IsAttacking()
+{
+    AnimatorStateInfo info = animator.GetCurrentAnimatorStateInfo(0);
+    bool isAttackAnim = info.IsName("Attack1") || info.IsName("Attack2");
+
+    // Only parryable during the middle of the attack
+    return isAttackAnim && info.normalizedTime >= 0.15f && info.normalizedTime <= 0.5f;
+}
+
+public void Parry()
+{
+    Debug.Log("[PurpleWizard] Parried!");
+
+    // Trigger stun if you have one
+    PurpleWizardStun stun = GetComponent<PurpleWizardStun>();
+    if (stun != null)
+    {
+        stun.RegisterParry();
+    }
+}
+
     
 }

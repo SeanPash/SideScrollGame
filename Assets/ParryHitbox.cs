@@ -6,23 +6,21 @@ public class ParryHitbox : MonoBehaviour
     public LayerMask targetMask;
 
     private bool parryTriggered = false;
-
     public bool parrySucceeded = false;
 
     void OnEnable()
     {
         parryTriggered = false;
         parrySucceeded = false;
-        Debug.Log("ParryHitbox activated — checking manually.");
+        Debug.Log("ParryHitbox enabled — waiting for manual trigger.");
 
-        ManualCheckParry();
     }
 
-    private void ManualCheckParry()
+    public void ManualCheckParry()
     {
         Collider2D[] hits = Physics2D.OverlapBoxAll(
             transform.position,
-            GetComponent<Collider2D>().bounds.size + new Vector3(1f, 0, 0),
+            GetComponent<Collider2D>().bounds.size + new Vector3(1f, 0f, 0f),
             0f,
             targetMask
         );
@@ -31,28 +29,21 @@ public class ParryHitbox : MonoBehaviour
         {
             if (parryTriggered) break;
 
-            IAttackState attacker = hit.GetComponentInParent<IAttackState>();
-            if (attacker != null)
-            {
-                bool attacking = attacker.IsAttacking();
-                Debug.Log($"[ParryHitbox] Checking {hit.name} | Attacking: {attacking}");
+            GameObject target = hit.gameObject;
+            Debug.Log($"[ParryHitbox] Checking {target.name}");
 
-                if (attacking)
-                {
-                    Debug.Log($"[ParryHitbox] Parrying: {hit.name} (Resolved to: {attacker})");
-                    attacker.Parry(); // This should trigger the stun or effect
-                    parrySucceeded = true;
-                    parryTriggered = true;
-                    return;
-                }
-                else
-                {
-                    Debug.Log($"[ParryHitbox] {hit.name} was not attacking — parry failed.");
-                }
+            bool result = parrySystem.Parry(target);  // Use centralized logic!
+
+            if (result)
+            {
+                parrySucceeded = true;
+                parryTriggered = true;
+                Debug.Log($"[ParryHitbox] Parry SUCCESS on {target.name}");
+                return;
             }
             else
             {
-                Debug.LogWarning($"[ParryHitbox] No IAttackState found on {hit.name} or parent.");
+                Debug.Log($"[ParryHitbox] Parry FAILED on {target.name}");
             }
         }
     }

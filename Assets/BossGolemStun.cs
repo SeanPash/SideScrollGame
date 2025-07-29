@@ -14,14 +14,15 @@ public class BossGolemStun : MonoBehaviour, IStunnable
     private float lastParryTime = -Mathf.Infinity;
     private bool isOnCooldown = false;
     public GameObject stunIcon;
+    
 
     private void Awake()
     {
         if (bossBehavior == null)
             bossBehavior = GetComponent<BossGolemBehavior>();
         if (stunIcon != null)
-            stunIcon.SetActive(false); 
-        
+            stunIcon.SetActive(false);
+
     }
 
     public void RegisterParry()

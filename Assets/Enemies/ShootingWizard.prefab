@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2255815090909512834
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5473383020474672782}
+  m_Layer: 7
+  m_Name: ShootPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5473383020474672782
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2255815090909512834}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.377, y: 0.147, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1723547230344862664}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3149623308667509593
 GameObject:
   m_ObjectHideFlags: 0
@@ -14,13 +45,14 @@ GameObject:
   - component: {fileID: 5771576653809587175}
   - component: {fileID: 7869546289081393096}
   - component: {fileID: 6209714534388906622}
+  - component: {fileID: 741589864651876069}
   m_Layer: 7
   m_Name: ShootingWizard
   m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1723547230344862664
 Transform:
   m_ObjectHideFlags: 0
@@ -33,7 +65,8 @@ Transform:
   m_LocalPosition: {x: 12.6, y: 10.66, z: -0.064644046}
   m_LocalScale: {x: 2, y: 2, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 5473383020474672782}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &310262602407208434
@@ -189,3 +222,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c4cfcfea58025c438b3e5a51170a046, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  player: {fileID: 0}
+  projectilePrefab: {fileID: 5036591225735377892, guid: ef8fca2ac0d6543429efb2c3f234ecf8, type: 3}
+  projectileSpawnPoint: {fileID: 5473383020474672782}
+  moveSpeed: 3
+  attackRange: 10
+  retreatDistance: 0.7
+  shootCooldown: 5
+  retreatDuration: 1
+  retreatCooldown: 10
+--- !u!114 &741589864651876069
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3149623308667509593}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b33cf332d7e7c7e4c8ef47a953e98893, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 6

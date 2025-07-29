@@ -21,6 +21,9 @@ TagManager:
   - Ground
   - wall
   - projectile
+  - Crab Boss
+  - CrabProjectile
+  - PearlOnly
   - 
   - 
   - 
@@ -37,10 +40,7 @@ TagManager:
   - 
   - 
   - 
-  - 
-  - 
-  - 
-  - 
+  - BackGround
   m_SortingLayers:
   - name: Default
     uniqueID: 0

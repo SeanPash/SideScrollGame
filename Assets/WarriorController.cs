@@ -116,6 +116,18 @@ public float pushTimer = 0f;
     private bool isAttacking = false;
     private ParrySystem parrySystem;
     public GameObject attackHitbox;
+    public bool isControlEnabled = true;
+
+ void Awake()
+    {
+        if (GameObject.FindGameObjectsWithTag("Warrior").Length > 1)
+        {
+            Destroy(gameObject); // Prevent duplicate on scene load
+            return;
+        }
+
+        DontDestroyOnLoad(gameObject); // Keep across scenes
+    }
 
     void Start()
     {
@@ -125,10 +137,19 @@ public float pushTimer = 0f;
         sr = GetComponent<SpriteRenderer>();
         cameraShake = Camera.main.GetComponent<CameraShake>();
         parrySystem = GetComponent<ParrySystem>();
+        /*
+          if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "CrabBossRoom")
+        {
+            transform.localScale = new Vector3(2.5f, 2.5f, 1f);
+        }
+        */
+        
     }
+    
 
     void Update()
     {
+        if (!isControlEnabled) return;
         if (isBeingPushed)
         {
             pushTimer -= Time.deltaTime;
@@ -165,8 +186,19 @@ bool holdingCrouch = Input.GetKey(KeyCode.S);
     
         }
 
-        wasGrounded = currentlyGrounded;
-       
+       float horizontalInput = Input.GetAxisRaw("Horizontal");
+
+// Flip regardless of charging
+if (horizontalInput > 0)
+{
+    transform.localScale = new Vector3(Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
+}
+else if (horizontalInput < 0)
+{
+    transform.localScale = new Vector3(-Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
+}
+
+
             CombatMethod();
             MovementMethod();
             WallSlideMethod();

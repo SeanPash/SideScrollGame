@@ -13,15 +13,25 @@ public class ParrySystem : MonoBehaviour
         didSuccessfulParry = false;
         if (target == null) return false;
 
-        // 1. Check for IAttackState-based enemies (e.g., Wizard, Golem)
-        IAttackState attacker = target.GetComponentInParent<IAttackState>();
-        if (attacker != null && attacker.IsAttacking())
+       IAttackState attacker = target.GetComponentInParent<IAttackState>();
+if (attacker != null && attacker.IsAttacking())
+{
+    // Extra protection — check if the attack is *actually* parryable
+    var type = attacker.GetType();
+    var canBeParriedMethod = type.GetMethod("CanBeParried");
+    if (canBeParriedMethod != null)
+    {
+        bool canBeParried = (bool)canBeParriedMethod.Invoke(attacker, null);
+        if (canBeParried)
         {
             attacker.Parry();
             didSuccessfulParry = true;
             lastParryTime = Time.time;
             return true;
         }
+    }
+}
+
 
         // 2. Boss Golem — always accepts parry regardless of attack state
         var bossStun = target.GetComponentInParent<BossGolemStun>();
@@ -49,6 +59,19 @@ public class ParrySystem : MonoBehaviour
                 return true;
             }
         }
+        // 4. Crab Boss — Only parryable if using AttackB and not blue
+var crabBoss = target.GetComponentInParent<CrabBossBehaviorPhase1>();
+        if (crabBoss != null && crabBoss.IsAttacking())
+        {
+            if (crabBoss.CanBeParried())
+            {
+                crabBoss.OnParried(); // Or crabBoss.Stun() if that's your method
+                didSuccessfulParry = true;
+                lastParryTime = Time.time;
+                return true;
+            }
+        }
+
 
         // 4. No valid parry target
         Debug.Log($"[ParrySystem] Target '{target.name}' is not parryable or not in a valid state.");

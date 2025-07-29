@@ -14,9 +14,11 @@ GameObject:
   - component: {fileID: 7592225521450057307}
   - component: {fileID: 1420341996430766455}
   - component: {fileID: 4433930308588568659}
-  m_Layer: 0
+  - component: {fileID: 3050225369979793864}
+  - component: {fileID: 2418558336588584337}
+  m_Layer: 7
   m_Name: RegularGolem
-  m_TagString: Untagged
+  m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -30,7 +32,7 @@ Transform:
   m_GameObject: {fileID: 6699442460597293407}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.54, y: 10.64, z: 0.041795515}
+  m_LocalPosition: {x: -11.57, y: 10.73, z: 0.041795515}
   m_LocalScale: {x: 3, y: 3, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -126,6 +128,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   currentForm: 0
+  maxHealth: 30
+  isHurting: 0
   animator: {fileID: 1881455311574607702}
   spriteRenderer: {fileID: 2662515546547232330}
   player: {fileID: 0}
@@ -202,3 +206,31 @@ CapsuleCollider2D:
   m_Offset: {x: 0, y: -0.014}
   m_Size: {x: 0.1, y: 0.2}
   m_Direction: 0
+--- !u!114 &3050225369979793864
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6699442460597293407}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d39818c7e13581479fcb94a2ddd78b4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &2418558336588584337
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6699442460597293407}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f811c17d8bfb4324fa6a8c647658cab4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  stunDuration: 1
+  stunCooldown: 5
+  stunIconPrefab: {fileID: 0}
+  iconOffset: {x: 0.8, y: 1.2, z: 0}

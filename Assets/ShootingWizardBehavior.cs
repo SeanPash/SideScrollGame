@@ -21,8 +21,14 @@ public class ShootingWizardBehavior : MonoBehaviour
     private bool canRetreat = true;
     public float retreatDuration = 1f;
     public float retreatCooldown = 10f;
+    private ShootingWizardHealth health;
 
 
+
+    private void Awake()
+    {
+        health = GetComponent<ShootingWizardHealth>();
+    }
 
     private void Start()
     {
@@ -33,6 +39,7 @@ public class ShootingWizardBehavior : MonoBehaviour
 
     private void Update()
     {
+          if (health != null && health.isDead) return;
         if (player == null) return;
 
         float distance = Vector2.Distance(transform.position, player.position);
@@ -40,6 +47,7 @@ public class ShootingWizardBehavior : MonoBehaviour
 
         if (distance < retreatDistance && canRetreat && !isRetreating)
         {
+            if (health != null && health.isDead) return;
             StartCoroutine(Retreat(direction));
             return;
         }
@@ -68,6 +76,7 @@ public class ShootingWizardBehavior : MonoBehaviour
 
         if (canShoot && !isProjectileActive)
         {
+            if (health != null && health.isDead) return;
             StartCoroutine(ShootProjectile());
         }
     }
@@ -100,7 +109,7 @@ public class ShootingWizardBehavior : MonoBehaviour
     public void OnProjectileComplete()
     {
         isProjectileActive = false;
-
+        if (health != null && health.isDead) return;
         StartCoroutine(ResetShootCooldown());
     }
 
@@ -128,7 +137,7 @@ public class ShootingWizardBehavior : MonoBehaviour
         rb.linearVelocity = Vector2.zero;
         isRetreating = false;
         animator.Play("Idle");
-
+        if (health != null && health.isDead) yield break;
         StartCoroutine(ResetRetreatCooldown());
     }
 

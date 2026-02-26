@@ -38,7 +38,7 @@ Technologies Used
 -Unity Animator Controller
 -Unity Physics2D
 
-##Architecture Highlights
+Architecture Highlights
 - Modular behavior scripts for enemies and bosses
 - Coroutine-based cooldown management
 - Raycast-based ground and wall detection

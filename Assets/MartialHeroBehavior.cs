@@ -233,11 +233,11 @@ private IEnumerator ResetDashAttackCooldown()
         // Teleport to opposite side if player is near wall
         if (distanceFromLeft < knifeTeleportDistance + buffer)
         {
-            side = 1f; // Near left → go right
+            side = 1f; // Near left - go right
         }
         else if (distanceFromRight < knifeTeleportDistance + buffer)
         {
-            side = -1f; // Near right → go left
+            side = -1f; // Near right - go left
         }
         else
         {
@@ -247,7 +247,7 @@ private IEnumerator ResetDashAttackCooldown()
 
         float targetX = Mathf.Clamp(playerX + side * knifeTeleportDistance, minX + buffer, maxX - buffer);
 
-        // ✅ Raycast down to check for ground at teleport spot
+        // raycast down to check for ground at teleport position
         Vector2 rayOrigin = new Vector2(targetX, transform.position.y + 2f);
         RaycastHit2D groundCheck = Physics2D.Raycast(rayOrigin, Vector2.down, 5f, LayerMask.GetMask("Ground"));
 
@@ -255,13 +255,13 @@ private IEnumerator ResetDashAttackCooldown()
 
         if (!groundCheck.collider)
         {
-            // ❌ No ground — don't teleport, just reappear and throw knife
-            Debug.Log("[MartialHero] No ground found — throwing knife from current position.");
+            // no ground - don't teleport, throw knife from current position
+            Debug.Log("[MartialHero] No ground found - throwing knife from current position.");
             finalTarget = transform.position;
         }
         else
         {
-            // ✅ Safe to teleport
+            // ground found - teleport
             finalTarget = new Vector3(targetX, groundCheck.point.y + 1f, transform.position.z);
             transform.position = finalTarget;
         }
@@ -331,11 +331,11 @@ if (smokeEffectPrefab != null)
 
     if (distanceFromLeft < teleportDistance + buffer)
     {
-        side = 1f; // Near left wall → teleport right
+        side = 1f; // Near left wall - teleport right
     }
     else if (distanceFromRight < teleportDistance + buffer)
     {
-        side = -1f; // Near right wall → teleport left
+        side = -1f; // Near right wall - teleport left
     }
     else
     {
@@ -350,8 +350,8 @@ if (smokeEffectPrefab != null)
 
     if (!groundCheck.collider)
     {
-        // ❌ No ground — reappear in place and throw knife instead
-        Debug.Log("[MartialHero] ChargeAttack failed — no ground, switching to knife throw");
+        // no ground - reappear in place and throw knife instead
+        Debug.Log("[MartialHero] ChargeAttack failed - no ground, switching to knife throw");
 
         spriteRenderer.enabled = true;
         spriteRenderer.color = Color.white;
@@ -376,7 +376,7 @@ if (smokeEffectPrefab != null)
         yield break;
     }
 
-    // ✅ Safe to teleport
+    // ground found - teleport
     float targetY = groundCheck.point.y + 1f;
     Vector3 finalTarget = new Vector3(targetX, targetY, transform.position.z);
     transform.position = finalTarget;
@@ -545,12 +545,12 @@ else if (canDashAttack && dist > 2.5f && dist <= 5f && !WasRecentlyUsed(MartialH
     isAttacking = true;
     currentAttackPhase = "Attack3";
 
-    // 🔹 Flash blue briefly BEFORE attack
+    // flash blue before attack
     spriteRenderer.color = Color.blue;
     yield return new WaitForSeconds(0.2f);
     spriteRenderer.color = Color.white;
 
-    // ▶️ Now play attack animation
+    // play attack animation
     if (!GetComponent<MartialHeroHealth>().isDead)
         animator.Play("Attack3");
 
@@ -577,7 +577,7 @@ GameObject hitbox = Instantiate(parryHitboxPrefab, transform);
 {
     if (!IsAttackingNow)
     {
-        Debug.Log("[MartialHero] Ignored parry — not attacking.");
+        Debug.Log("[MartialHero] Ignored parry - not attacking.");
         return;
     }
 

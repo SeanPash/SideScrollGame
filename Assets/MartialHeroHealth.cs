@@ -43,7 +43,7 @@ private MartialHeroPhase2 phase2;
         animator = GetComponent<Animator>();
         if (animator == null)
         {
-            Debug.LogWarning("[MartialHeroHealth] Animator still null — skipping animation.");
+            Debug.LogWarning("[MartialHeroHealth] Animator still null - skipping animation.");
         }
     }
 
@@ -52,7 +52,7 @@ private MartialHeroPhase2 phase2;
         sr = GetComponentInChildren<SpriteRenderer>();
         if (sr == null)
         {
-            Debug.LogWarning("[MartialHeroHealth] SpriteRenderer still null — skipping flash.");
+            Debug.LogWarning("[MartialHeroHealth] SpriteRenderer still null - skipping flash.");
         }
     }
 
@@ -79,7 +79,7 @@ private MartialHeroPhase2 phase2;
 
     int oldHealth = currentHealth;
     currentHealth -= amount;
-    Debug.Log($"[MartialHeroHealth] Took {amount} damage. HP: {oldHealth} → {currentHealth}");
+    Debug.Log($"[MartialHeroHealth] Took {amount} damage. HP: {oldHealth} -> {currentHealth}");
 
     if (!hasTransitioned && currentHealth <= maxHealth / 2)
     {

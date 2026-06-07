@@ -95,7 +95,7 @@ private IEnumerator DoStun(float duration)
 
     public void RegisterParry()
     {
-        Debug.Log("[MartialHeroStun] Parry registered — triggering stun.");
+        Debug.Log("[MartialHeroStun] Parry registered - triggering stun.");
         Stun(stunDuration);
     }
 

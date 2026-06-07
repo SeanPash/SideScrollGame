@@ -310,7 +310,7 @@ private IEnumerator LaunchSpearsFromSinglePoint(Vector2 origin, float width, int
             float y = arenaBottomY;
 
             GameObject spear = Instantiate(spearPrefab, origin, Quaternion.identity);
-spear.GetComponent<SpearProjectile>().Launch(origin, new Vector2(x, y)); // ✅ No arcHeight
+spear.GetComponent<SpearProjectile>().Launch(origin, new Vector2(x, y));
 
             yield return new WaitForSeconds(delayBetweenSpears);
         }
@@ -325,7 +325,7 @@ private List<Vector2> GenerateLandingPointsParabola(
         float t = i / (float)(count - 1); // goes 0 to 1
 
         // Ease out horizontally: starts slow then accelerates right
-        float x = Mathf.Lerp(startX, endX, Mathf.Pow(t, 1f)); // ✅ forces early spears to move less in X
+        float x = Mathf.Lerp(startX, endX, Mathf.Pow(t, 1f));
 
         // Smooth drop: all spears fall down (y decreases)
         float y = baseY; // you can also curve this slightly if needed
@@ -367,7 +367,7 @@ private List<Vector2> GenerateLandingPointsParabola_RightToLeft(
 
         Vector2 origin = spearSpawnPointLeft.position;
 
-        int spearCount = 16;  // ✅ Fewer spears = more spacing
+        int spearCount = 16;
         float spacing = 0.8f; // horizontal step size
 
         float totalWidth = spacing * (spearCount - 1); // spread out wide
@@ -415,7 +415,6 @@ private IEnumerator DoSpearPhaseRightToLeft()
 {
     Debug.Log("[MartialHero] Spear Phase 2: Right to Left");
 
-    // ✅ Use your assigned spawn point
     Vector2 origin = spearSpawnPointRight.position;
 
     int spearCount = 16;
@@ -423,7 +422,6 @@ private IEnumerator DoSpearPhaseRightToLeft()
 
     float totalWidth = spacing * (spearCount - 1);
 
-    // ✅ Adjust these to extend and shift the landing zone
     float extraLeft = 4f;     // extend more to left
     float extraRight = -0.1f; // shift start slightly right
 
@@ -537,7 +535,7 @@ private IEnumerator AlternateSpearPhasePattern()
         if (Time.time - waitStart >= timeout)
             Debug.LogWarning("[Phase 3] Waited too long to be idle");
 
-        // 🎲 Randomly choose 0 or 1, but not the same as lastRoll
+        // pick randomly, avoid repeating the last roll
         int roll;
         do {
             roll = Random.Range(0, 2); // 0 = double wave, 1 = middle sweep
@@ -618,14 +616,14 @@ private IEnumerator DoFinalSpearPhaseFromSidesToCenter()
         {
             float arcHeight = arcHeightBase + (i * arcHeightStep);
 
-            // 🟦 LEFT spear (moves rightward past center and hits ground)
+            // left spear moves rightward past center
             Vector2 leftStart = new Vector2(leftBase.x - (i * spacing), spawnY);
             Vector2 leftTarget = new Vector2(leftBase.x + (i * spacing * arcMultiplier), groundY - 0.3f); // LOWER target Y
 
             GameObject leftSpear = Instantiate(spearPrefab, leftStart, Quaternion.identity);
             leftSpear.GetComponent<SpearProjectile>().LaunchParabola(leftStart, leftTarget, arcHeight, 0.4f);
 
-            // 🟥 RIGHT spear (moves leftward past center and hits ground)
+            // right spear moves leftward past center
             Vector2 rightStart = new Vector2(rightBase.x + (i * spacing), spawnY);
             Vector2 rightTarget = new Vector2(rightBase.x - (i * spacing * arcMultiplier), groundY - 0.3f); // LOWER target Y
 
@@ -669,18 +667,18 @@ private IEnumerator DoFinalSpearPhaseFromSidesToCenter()
         if (Time.time - waitStart >= timeout)
             Debug.LogWarning("[SpearPhase] Waited too long to be idle");
 
-        // 🕹️ Get a new random roll that is NOT the same as the last
+        // pick a new roll that differs from the last
         int roll;
         do {
             roll = Random.Range(0, 3); // 0, 1, or 2
         } while (roll == lastRoll);
         lastRoll = roll;
 
-        // 🗡️ Trigger chosen spear attack
+        // trigger chosen spear attack
         switch (roll)
         {
             case 0:
-                // Combo: Left → Right
+                // Combo: Left - Right
                 yield return StartCoroutine(FlashWarning(spearSpawnPointLeft.gameObject));
                 yield return StartCoroutine(DoSpearPhaseLeftToRight());
                 yield return StartCoroutine(FlashWarning(spearSpawnPointRight.gameObject));
@@ -703,10 +701,9 @@ private IEnumerator DoFinalSpearPhaseFromSidesToCenter()
                 break;
         }
 
-        // ✅ Update cooldown
         lastSpearAttackTime = Time.time;
 
-        // Wait 5–10 seconds before next random spear attack
+        // Wait 5-10 seconds before next random spear attack
         float delay = Random.Range(5f, 10f);
         Debug.Log($"[SpearPhase] Waiting {delay:F1}s before next attack...");
         yield return new WaitForSeconds(delay);
@@ -791,7 +788,7 @@ spriteRenderer.enabled = false;
 
     transform.position = targetPosition;
 
-    // ❌ No parry window
+    // not parryable
     currentAttackPhase = "GroundSlam";
     IsAttackingNow = true;
 
@@ -938,11 +935,11 @@ spriteRenderer.enabled = false;        yield return new WaitForSeconds(0.3f);
         // Teleport to opposite side if player is near wall
         if (distanceFromLeft < knifeTeleportDistance + buffer)
         {
-            side = 1f; // Near left → go right
+            side = 1f; // Near left - go right
         }
         else if (distanceFromRight < knifeTeleportDistance + buffer)
         {
-            side = -1f; // Near right → go left
+            side = -1f; // Near right - go left
         }
         else
         {
@@ -952,7 +949,7 @@ spriteRenderer.enabled = false;        yield return new WaitForSeconds(0.3f);
 
         float targetX = Mathf.Clamp(playerX + side * knifeTeleportDistance, minX + buffer, maxX - buffer);
 
-        // ✅ Raycast down to check for ground at teleport spot
+        // raycast down to check for ground at teleport position
         Vector2 rayOrigin = new Vector2(targetX, transform.position.y + 2f);
         RaycastHit2D groundCheck = Physics2D.Raycast(rayOrigin, Vector2.down, 5f, LayerMask.GetMask("Ground"));
 
@@ -960,13 +957,13 @@ spriteRenderer.enabled = false;        yield return new WaitForSeconds(0.3f);
 
         if (!groundCheck.collider)
         {
-            // ❌ No ground — don't teleport, just reappear and throw knife
-            Debug.Log("[MartialHero] No ground found — throwing knife from current position.");
+            // no ground - don't teleport, throw knife from current position
+            Debug.Log("[MartialHero] No ground found - throwing knife from current position.");
             finalTarget = transform.position;
         }
         else
         {
-            // ✅ Safe to teleport
+            // ground found - teleport
             finalTarget = new Vector3(targetX, groundCheck.point.y + 1f, transform.position.z);
             transform.position = finalTarget;
         }
@@ -1038,11 +1035,11 @@ spriteRenderer.enabled = false;
 
     if (distanceFromLeft < teleportDistance + buffer)
     {
-        side = 1f; // Near left wall → teleport right
+        side = 1f; // Near left wall - teleport right
     }
     else if (distanceFromRight < teleportDistance + buffer)
     {
-        side = -1f; // Near right wall → teleport left
+        side = -1f; // Near right wall - teleport left
     }
     else
     {
@@ -1057,8 +1054,8 @@ spriteRenderer.enabled = false;
 
     if (!groundCheck.collider)
     {
-        // ❌ No ground — reappear in place and throw knife instead
-        Debug.Log("[MartialHero] ChargeAttack failed — no ground, switching to knife throw");
+        // no ground - reappear in place and throw knife instead
+        Debug.Log("[MartialHero] ChargeAttack failed - no ground, switching to knife throw");
 
         spriteRenderer.enabled = true;
         spriteRenderer.color = Color.white;
@@ -1083,7 +1080,7 @@ spriteRenderer.enabled = false;
         yield break;
     }
 
-    // ✅ Safe to teleport
+    // ground found - teleport
     float targetY = groundCheck.point.y + 1f;
     Vector3 finalTarget = new Vector3(targetX, targetY, transform.position.z);
     transform.position = finalTarget;
@@ -1171,7 +1168,7 @@ spriteRenderer.enabled = false;
             continue;
         }
 
-        // 🧠 Phase 2 trigger at 50% health
+        // phase 2 trigger at 50% health
         if (!spearPhasesActive && health.currentHealth <= health.maxHealth * 0.5f && !isAttacking && Time.time >= nextSpearPhaseAllowedTime)
         {
             spearPhasesActive = true;
@@ -1179,11 +1176,11 @@ spriteRenderer.enabled = false;
             if (activeSpearRoutine != null)
                 StopCoroutine(activeSpearRoutine);
 
-            activeSpearRoutine = StartCoroutine(SpearPhaseLoop()); // ✅ No manual attack
+            activeSpearRoutine = StartCoroutine(SpearPhaseLoop());
             nextSpearPhaseAllowedTime = Time.time + 10f;
         }
 
-        // 🧠 Phase 3 trigger at 35% health
+        // phase 3 trigger at 35% health
         if (!hasTriggeredPhase3 && health.currentHealth <= health.maxHealth * 0.35f && !isAttacking && Time.time >= nextSpearPhaseAllowedTime)
         {
             hasTriggeredPhase3 = true;
@@ -1191,11 +1188,11 @@ spriteRenderer.enabled = false;
             if (activeSpearRoutine != null)
                 StopCoroutine(activeSpearRoutine);
 
-            activeSpearRoutine = StartCoroutine(AlternateSpearPhasePattern()); // ✅ No manual attack
+            activeSpearRoutine = StartCoroutine(AlternateSpearPhasePattern());
             nextSpearPhaseAllowedTime = Time.time + 10f;
         }
 
-        // 🧠 Final Phase at 25% health
+        // final phase at 25% health
         if (!hasTriggeredFinalPhase && health.currentHealth <= health.maxHealth * 0.25f && !isAttacking && Time.time >= nextSpearPhaseAllowedTime)
         {
             hasTriggeredFinalPhase = true;
@@ -1203,12 +1200,12 @@ spriteRenderer.enabled = false;
             if (activeSpearRoutine != null)
                 StopCoroutine(activeSpearRoutine);
 
-            activeSpearRoutine = StartCoroutine(FinalSpearPhaseRotation()); // ✅ No manual attack
+            activeSpearRoutine = StartCoroutine(FinalSpearPhaseRotation());
             nextSpearPhaseAllowedTime = Time.time + 10f;
         }
 
 
-            // 🧠 Regular attack logic
+            // regular attack logic
             float dist = Vector2.Distance(transform.position, player.position);
             float verticalDist = Mathf.Abs(transform.position.y - player.position.y);
 
@@ -1314,12 +1311,12 @@ spriteRenderer.enabled = false;
     isAttacking = true;
     currentAttackPhase = "Attack3";
 
-    // 🔹 Flash blue briefly BEFORE attack
+    // flash blue before attack
     spriteRenderer.color = Color.blue;
     yield return new WaitForSeconds(0.2f);
     spriteRenderer.color = Color.white;
 
-    // ▶️ Now play attack animation
+    // play attack animation
     if (!GetComponent<MartialHeroHealth>().isDead)
         animator.Play("Attack3");
 
@@ -1336,11 +1333,11 @@ spriteRenderer.enabled = false;
 {
     if (parryHitboxPrefab == null)
     {
-        Debug.LogError("[Parry] ❌ Hitbox prefab is missing.");
+        Debug.LogError("[Parry] Hitbox prefab is missing.");
         return;
     }
 
-    Debug.Log($"[Parry] ✅ Spawning hitbox at {transform.position} for {duration}s during {currentAttackPhase}");
+    Debug.Log($"[Parry] Spawning hitbox at {transform.position} for {duration}s during {currentAttackPhase}");
 
     GameObject hitbox = Instantiate(parryHitboxPrefab, transform);
     hitbox.transform.localPosition = Vector3.zero;
@@ -1352,7 +1349,7 @@ spriteRenderer.enabled = false;
 {
     if (!IsAttackingNow)
     {
-        Debug.Log("[MartialHero] Ignored parry — not attacking.");
+        Debug.Log("[MartialHero] Ignored parry - not attacking.");
         return;
     }
 

@@ -103,7 +103,7 @@ public class MartialBossTriggerRoom : MonoBehaviour
         if (anim != null && anim.enabled && player.activeInHierarchy)
             anim.Play("Idle");
 
-        // ✅ Activate invisible walls
+        // activate invisible walls
         if (invisibleWalls != null)
         {
             invisibleWalls.SetActive(true);

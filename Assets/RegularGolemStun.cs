@@ -23,7 +23,7 @@ public class RegularGolemStun : MonoBehaviour, IStunnable
         if (stunIconPrefab != null)
         {
             stunIconInstance = Instantiate(stunIconPrefab, transform.position + iconOffset, Quaternion.identity);
-            stunIconInstance.transform.SetParent(null); // not a child — follows via script
+            stunIconInstance.transform.SetParent(null); // follows via script, not parented
             stunIconInstance.SetActive(false);
         }
     }

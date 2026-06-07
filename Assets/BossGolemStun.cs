@@ -31,7 +31,7 @@ public class BossGolemStun : MonoBehaviour, IStunnable
 
     if (isOnCooldown || bossBehavior == null)
     {
-        Debug.Log("Parry ignored — on cooldown or no bossBehavior.");
+        Debug.Log("Parry ignored - on cooldown or no bossBehavior.");
         return;
     }
 
@@ -53,7 +53,7 @@ public class BossGolemStun : MonoBehaviour, IStunnable
 
     if (parryCount >= 2)
     {
-        Debug.Log("Parry threshold reached — applying stun.");
+        Debug.Log("Parry threshold reached - applying stun.");
         StartCoroutine(ApplyStun());
     }
 }

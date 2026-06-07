@@ -12,7 +12,7 @@ public class ParryHitbox : MonoBehaviour
     {
         parryTriggered = false;
         parrySucceeded = false;
-        Debug.Log("ParryHitbox enabled — waiting for manual trigger.");
+        Debug.Log("ParryHitbox enabled - waiting for manual trigger.");
 
     }
 

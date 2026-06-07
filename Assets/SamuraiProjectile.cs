@@ -65,7 +65,7 @@ public class SamuraiProjectile : MonoBehaviour
         {
             Debug.Log("[Knife] Parried projectile hit the Boss. Reflecting!");
 
-            // No damage applied — just destroy the projectile after reflection
+            // no damage applied - destroy the projectile on reflection
             Destroy(gameObject);
         }
         else if (!wasParried && !other.isTrigger)

@@ -13,7 +13,7 @@ public class ParrySystem : MonoBehaviour
         didSuccessfulParry = false;
         if (target == null) return false;
 
-        // ✅ Martial Hero Phase 1
+        // Martial Hero Phase 1
         var phase1 = target.GetComponentInParent<MartialHeroBehavior>();
         if (phase1 != null && phase1.IsAttacking())
         {
@@ -31,7 +31,7 @@ public class ParrySystem : MonoBehaviour
             }
         }
 
-        // ✅ Martial Hero Phase 2
+        // Martial Hero Phase 2
         var phase2 = target.GetComponentInParent<MartialHeroPhase2>();
         if (phase2 != null && phase2.IsAttacking())
         {
@@ -49,7 +49,7 @@ public class ParrySystem : MonoBehaviour
             }
         }
 
-        // ✅ Boss Golem — always accepts parry
+        // Boss Golem - always accepts parry
         var bossStun = target.GetComponentInParent<BossGolemStun>();
         if (bossStun != null)
         {
@@ -60,7 +60,7 @@ public class ParrySystem : MonoBehaviour
             return true;
         }
 
-        // ✅ Crab Boss — Only parryable if not flashing blue
+        // Crab Boss - only parryable if not flashing blue
         var crabBoss = target.GetComponentInParent<CrabBossBehaviorPhase1>();
         if (crabBoss != null && crabBoss.IsAttacking())
         {
@@ -74,7 +74,7 @@ public class ParrySystem : MonoBehaviour
             }
         }
 
-        // ✅ Samurai Knife Projectile
+// Samurai knife projectile
 var knife = target.GetComponent<SamuraiProjectile>();
 if (knife != null && !knife.IsParried() && knife.CanBeParried())
 {

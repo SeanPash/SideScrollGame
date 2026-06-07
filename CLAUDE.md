@@ -4,57 +4,57 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-2D side-scrolling action game built in **Unity 2024 (6000.0.31f1)** with C#. Focused on responsive combat, enemy AI with multi-phase bosses, and animation-synced mechanics. All game scripts live under `Assets/`.
+2D side-scrolling action game built in **Unity 2024 (6000.0.31f1)** with C#. Focused on responsive combat, enemy AI with multi-phase bosses, and animation-synced mechanics. All game scripts live under `Assets/Scripts/` and custom prefabs under `Assets/Prefabs/`.
 
 ## Running the Project
 
-This is a Unity project — there is no CLI build command. Open the project in Unity 2024.0.31f1:
+This is a Unity project - there is no CLI build command. Open the project in Unity 2024.0.31f1:
 
 - **Play in editor:** Click the Play button in Unity Editor
-- **Scenes:** `Assets/Scenes/` — start with `SampleScene.unity` (main level), then `CrabBossRoom`, `MartialHeroBossRoom`, `SlimeBossRoom`
+- **Scenes:** `Assets/Scenes/` - start with `SampleScene.unity` (main level), then `CrabBossRoom`, `MartialHeroBossRoom`, `SlimeBossRoom`
 - **Debug:** Attach VS Code or Rider using `.vscode/launch.json` ("Attach to Unity")
-- **No automated tests** — Unity Test Framework is in dependencies but no tests are written; test manually in Play mode
+- **No automated tests** - Unity Test Framework is in dependencies but no tests are written; test manually in Play mode
 
 ## Architecture
 
 ### Player System
 
-**`WarriorController.cs`** (~1383 lines) is the central player script. It handles:
+**`WarriorController.cs`** (~1383 lines) is the central player script located at `Assets/Scripts/Player/WarriorController.cs`. It handles:
 - Movement: horizontal, jump, wall slide, wall jump, dash
 - Combat: 3-hit combo chain, hold-release charge attack, downward aerial, slide
 - Parry: delegates to `ParrySystem.cs` based on enemy type
 - All stamina checks go through `PlayerStats.cs` before executing moves
 
-**`PlayerStats.cs`** — singleton for player stats (max health 100, base damage 3, stamina max 100 with 20/sec regen after 1s delay). Access via `PlayerStats.Instance`.
+**`PlayerStats.cs`** - singleton for player stats (max health 100, base damage 3, stamina max 100 with 20/sec regen after 1s delay). Access via `PlayerStats.Instance`. Located at `Assets/Scripts/Player/PlayerStats.cs`.
 
 ### Combat Pipeline
 
 ```
 Input (WarriorController)
-  → Stamina check (PlayerStats)
-  → Animation state change (Animator)
-  → Hitbox activation (DealDamage.cs / raycast)
-  → IDamageable.TakeDamage() on enemy
-  → Enemy state/phase transition
-  → Camera/VFX feedback (CameraShake, particles)
+  -> Stamina check (PlayerStats)
+  -> Animation state change (Animator)
+  -> Hitbox activation (DealDamage.cs / raycast)
+  -> IDamageable.TakeDamage() on enemy
+  -> Enemy state/phase transition
+  -> Camera/VFX feedback (CameraShake, particles)
 ```
 
-**`DealDamage.cs`** — hitbox component placed on weapon. Supports animation-frame-precise damage windows (`manualHitCheck`), charge-scaled damage, and override damage values.
+**`DealDamage.cs`** - hitbox component placed on weapon. Supports animation-frame-precise damage windows (`manualHitCheck`), charge-scaled damage, and override damage values. Located at `Assets/Scripts/Combat/DealDamage.cs`.
 
 ### Enemy Architecture
 
 Regular enemies follow a 2-script pattern: `[Name]Behavior.cs` (state machine + attack coroutines) + `[Name]Health.cs` (IDamageable implementation). Detection uses `Physics2D` overlap/raycast with cooldown coroutines.
 
 Boss enemies use a **phase manager pattern**:
-- `CrabBossBehavior.cs` (orchestrator) → `CrabBossBehaviorPhase1` + `CrabBossBehaviorPhase2` + `CrabBossHealth` + `CrabBossDeathHandler`
-- `MartialHeroBehavior.cs` (Phase 1) → `MartialHeroPhase2` + `MartialHeroHealth` + `MartialHeroStun`
+- `CrabBossBehavior.cs` (orchestrator) -> `CrabBossBehaviorPhase1` + `CrabBossBehaviorPhase2` + `CrabBossHealth` + `CrabBossDeathHandler`
+- `MartialHeroBehavior.cs` (Phase 1) -> `MartialHeroPhase2` + `MartialHeroHealth` + `MartialHeroStun`
 - `SlimeBossBehavior.cs` + `SlimeBossPhaseManager` + `SlimeBossHealth`
 
 ### Key Interfaces
 
-- **`IDamageable`** — all enemies implement this; call `TakeDamage(float amount)`
-- **`IAttackState`** — used by `ParrySystem` to detect if an enemy is in an attack state
-- **`IStunnable`** — implemented by enemies that react to parry stuns
+- **`IDamageable`** - all enemies implement this; call `TakeDamage(float amount)`
+- **`IAttackState`** - used by `ParrySystem` to detect if an enemy is in an attack state
+- **`IStunnable`** - implemented by enemies that react to parry stuns
 
 ### Projectile System
 
@@ -81,18 +81,18 @@ Player persists across scenes via `DontDestroyOnLoad()`. Scene transitions are m
 
 | File | Role |
 |------|------|
-| `Assets/WarriorController.cs` | Main player controller — movement + combat |
-| `Assets/PlayerStats.cs` | Singleton: health, damage, stamina |
-| `Assets/ParrySystem.cs` | Routes parry logic by enemy type |
-| `Assets/DealDamage.cs` | Weapon hitbox — damage application |
-| `Assets/Enemies/CrabBoss/CrabBossBehavior.cs` | Boss orchestrator example |
+| `Assets/Scripts/Player/WarriorController.cs` | Main player controller - movement + combat |
+| `Assets/Scripts/Player/PlayerStats.cs` | Singleton: health, damage, stamina |
+| `Assets/Scripts/Combat/ParrySystem.cs` | Routes parry logic by enemy type |
+| `Assets/Scripts/Combat/DealDamage.cs` | Weapon hitbox - damage application |
+| `Assets/Scripts/Bosses/CrabBossBehavior.cs` | Boss orchestrator example |
 
 ## Third-Party Assets
 
-`Assets/Cainos/`, `Assets/CartoonVFX9x/`, `Assets/JMO Assets/` — do not modify these; they are third-party packages. Game scripts are in `Assets/` root and `Assets/Enemies/`.
+`Assets/Cainos/`, `Assets/CartoonVFX9x/`, `Assets/JMO Assets/` - do not modify these; they are third-party packages. Custom game scripts are in `Assets/Scripts/` and custom prefabs are in `Assets/Prefabs/`.
 
 ## Commit Guidelines
 
 - Never add yourself as co-author in commit messages
 - Never use emojis in code comments or commit messages
-- Never use em dashes (—) in comments or strings; use plain hyphens (-) instead
+- Never use em dashes (-) in comments or strings; use plain hyphens (-) instead

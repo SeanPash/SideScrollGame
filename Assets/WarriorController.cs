@@ -759,7 +759,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
         // Wait until grounded
         yield return new WaitUntil(() => IsGrounded());
 
-        // 🔥 Play screen shake when hitting ground
+        // screen shake on ground hit
         if (cameraShake != null)
         {
             StartCoroutine(cameraShake.Shake(0.15f, 0.3f));
@@ -1032,13 +1032,13 @@ IEnumerator DoParry()
 
     animator.Play("Parry");
 
-    Debug.Log("Parry started — hitbox activated.");
+    Debug.Log("Parry started - hitbox activated.");
 
     // Prepare parry state
     parryHitbox.parrySucceeded = false;
     parryHitbox.gameObject.SetActive(true);
 
-    // ✅ Delay slightly before checking for parry (ensure physics overlap is fresh)
+    // small delay before parry check so physics overlap is current
     yield return new WaitForSeconds(0.02f);
     parryHitbox.ManualCheckParry();
 
@@ -1054,11 +1054,11 @@ IEnumerator DoParry()
     if (!parryHitbox.parrySucceeded)
     {
         PlayerStats.Instance.UseStamina(10f);
-        Debug.Log("Parry missed — stamina used.");
+        Debug.Log("Parry missed - stamina used.");
     }
     else
     {
-        Debug.Log("Parry successful — no stamina used.");
+        Debug.Log("Parry successful - no stamina used.");
     }
 
     // Handle animation reset
@@ -1183,7 +1183,7 @@ if (!IsInAnyCrouch())
     {
         yield return new WaitForSeconds(duration);
 
-        // Only switch back if we’re not attacking or doing something else
+        // Only switch back if we're not attacking or doing something else
         if (!isAttacking && !isDashing && !isSliding && !isParrying && !isCharging)
         {
             if (Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0)

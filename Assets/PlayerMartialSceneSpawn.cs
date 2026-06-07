@@ -14,7 +14,7 @@ public class PlayerMartialSceneSpawn : MonoBehaviour
 
         if (existingPlayer != null)
         {
-            Debug.Log("Warrior already exists — using existing player.");
+            Debug.Log("Warrior already exists - using existing player.");
 
             if (spawnPoint != null)
             {
@@ -46,14 +46,14 @@ public class PlayerMartialSceneSpawn : MonoBehaviour
             yield break;
         }
 
-        // ✅ No existing player — spawn new one
+        // no existing player - spawn new one
         if (playerPrefab != null && spawnPoint != null)
         {
             GameObject newPlayer = Instantiate(playerPrefab, spawnPoint.position, Quaternion.identity);
             newPlayer.name = "Warrior";
             newPlayer.transform.localScale = new Vector3(2f, 2f, 1f);
 
-            // ✅ Re-enable control on new player
+            // re-enable control on new player
             WarriorController warriorController = newPlayer.GetComponent<WarriorController>();
             if (warriorController != null)
             {

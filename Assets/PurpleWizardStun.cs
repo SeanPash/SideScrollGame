@@ -72,7 +72,7 @@ public Vector3 iconOffset = new Vector3(0.8f, 1.2f, 0f);
 
     public void RegisterParry()
     {
-        Debug.Log("[WizardStunHandler] Parry registered — triggering stun.");
+        Debug.Log("[WizardStunHandler] Parry registered - triggering stun.");
         Stun(stunDuration);
     }
 

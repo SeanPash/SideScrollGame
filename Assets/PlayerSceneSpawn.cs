@@ -11,12 +11,12 @@ public class PlayerSceneSpawn : MonoBehaviour
 
         if (existingPlayer != null)
         {
-            Debug.Log("Warrior already exists — using existing player.");
+            Debug.Log("Warrior already exists - using existing player.");
             existingPlayer.transform.position = spawnPoint.position;
             existingPlayer.transform.localScale = new Vector3(2f, 2f, 1f);
             existingPlayer.SetActive(true);
 
-            // ✅ Always re-enable control
+            // always re-enable control
             WarriorController warriorController = existingPlayer.GetComponent<WarriorController>();
             if (warriorController != null)
             {
@@ -35,7 +35,7 @@ public class PlayerSceneSpawn : MonoBehaviour
             newPlayer.name = "Warrior";
             newPlayer.transform.localScale = new Vector3(2f, 2f, 1f);
 
-            // ✅ Re-enable control
+            // re-enable control
             WarriorController warriorController = newPlayer.GetComponent<WarriorController>();
             if (warriorController != null)
             {

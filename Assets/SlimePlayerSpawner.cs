@@ -14,7 +14,7 @@ public class SlimePlayerSpawner : MonoBehaviour
 
         if (existingPlayer != null)
         {
-            Debug.Log("Warrior already exists — using existing player.");
+            Debug.Log("Warrior already exists - using existing player.");
 
             if (spawnPoint != null)
             {
@@ -46,7 +46,7 @@ public class SlimePlayerSpawner : MonoBehaviour
             yield break;
         }
 
-        // ✅ No existing player — spawn new one
+        // no existing player - spawn new one
         if (playerPrefab != null && spawnPoint != null)
         {
             GameObject newPlayer = Instantiate(playerPrefab, spawnPoint.position, Quaternion.identity);

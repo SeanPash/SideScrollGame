@@ -258,7 +258,7 @@ public GameObject redLineStaticPrefab;  // <-- doesn't follow
 
     private IEnumerator DoAttackA()
     {
-        nextAlternatingAttackTime = Time.time + 5.5f; // 🔒 Set cooldown immediately
+        nextAlternatingAttackTime = Time.time + 5.5f; // set cooldown immediately
         nextIsAttackA = false;
 
         FaceDirection();

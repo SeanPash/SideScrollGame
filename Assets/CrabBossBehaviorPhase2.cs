@@ -370,7 +370,7 @@ GameObject redLine = Instantiate(redLineTrackPrefab);
                 }
             }
         }
-        // ✅ At the VERY END of the coroutine:
+        // at the end of the coroutine:
         if (isVertical)
         {
             Debug.Log("[CrabBoss] Vertical red line completed.");
@@ -476,15 +476,15 @@ GameObject redLine = Instantiate(redLineTrackPrefab);
         // ---- 1. Compute evenly spaced X positions for 4 vertical lines ----
       float[] verticalX = new float[4];
 verticalX[0] = camX - camWidth / 2f + 2f;     // Far left
-verticalX[1] = camX - camWidth / 8f;          // ⬅️ Move closer to center
-verticalX[2] = camX + camWidth / 8f;          // ➡️ Move closer to center
+verticalX[1] = camX - camWidth / 8f;          // move closer to center
+verticalX[2] = camX + camWidth / 8f;          // move closer to center
 verticalX[3] = camX + camWidth / 2f - 2f;     // Far right
 
         // ---- 2. Compute Y positions for 3 horizontal lines ----
     float[] horizontalY = new float[3];
-horizontalY[0] = camY - camHeight / 2f + 1.8f;   // ⬆️ bottom line moved up from +1.2f to +1.8f
+horizontalY[0] = camY - camHeight / 2f + 1.8f;   // bottom line moved up from +1.2f to +1.8f
         horizontalY[1] = camY - 0.5f;    
-horizontalY[2] = camY + camHeight / 2f - 2.2f;   // ⬇️ top line moved down from -1.5f to -2.2f
+horizontalY[2] = camY + camHeight / 2f - 2.2f;   // top line moved down from -1.5f to -2.2f
 
         // ---- 3. Spawn vertical red lines ----
        foreach (float x in verticalX)

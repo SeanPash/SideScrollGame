@@ -218,7 +218,7 @@ private IEnumerator DoAttackB()
         Debug.Log("[CrabBoss] AttackB parry window STARTED");
     }
 
-    // ✅ Parry window duration: only 0.25s (ends slightly early)
+    // parry window is 0.25s
     yield return new WaitForSeconds(0.25f);
 
     isParryableAttack = false;
@@ -347,7 +347,7 @@ private IEnumerator DoAttackB()
     }
     else
     {
-        Debug.Log("[CrabBoss] Parry attempt failed — not in a valid state.");
+        Debug.Log("[CrabBoss] Parry attempt failed - not in a valid state.");
     }
 }
 public bool CanBeParried()

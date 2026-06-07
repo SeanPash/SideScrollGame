@@ -111,7 +111,7 @@ public class CrabBossHealth : MonoBehaviour, IDamageable
         Collider2D[] colliders = GetComponentsInChildren<Collider2D>();
         foreach (var c in colliders) c.enabled = false;
 
-        // ✳️ Activate death handler
+        // activate death handler
         CrabBossDeathHandler deathHandler = GetComponent<CrabBossDeathHandler>();
         if (deathHandler != null)
         {

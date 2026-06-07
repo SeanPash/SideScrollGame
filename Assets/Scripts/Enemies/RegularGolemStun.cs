@@ -47,7 +47,7 @@ public class RegularGolemStun : MonoBehaviour, IStunnable
 
     public void RegisterParry()
     {
-        Debug.Log("[GolemStun] Parry registered → applying stun");
+        Debug.Log("[GolemStun] Parry registered -> applying stun");
         Stun(stunDuration);
     }
 

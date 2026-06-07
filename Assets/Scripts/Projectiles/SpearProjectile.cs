@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 
 public class SpearProjectile : MonoBehaviour
@@ -22,7 +22,7 @@ public class SpearProjectile : MonoBehaviour
         if (collision.gameObject.layer == LayerMask.NameToLayer("Ground") ||
             collision.CompareTag("Warrior"))
         {
-            Destroy(gameObject); // 💥 Destroy on ground or Warrior hit
+            Destroy(gameObject); // Destroy on ground or Warrior hit
         }
     }
 
@@ -48,7 +48,7 @@ public class SpearProjectile : MonoBehaviour
         }
 
         transform.position = end;
-        Destroy(gameObject); // 🧨 Destroy after reaching destination
+        Destroy(gameObject); // Destroy after reaching destination
     }
 
     private IEnumerator MoveStraight(Vector2 start, Vector2 end)
@@ -74,6 +74,6 @@ public class SpearProjectile : MonoBehaviour
         }
 
         transform.position = end;
-        Destroy(gameObject); // 🧨 Destroy after reaching destination
+        Destroy(gameObject); // Destroy after reaching destination
     }
 }

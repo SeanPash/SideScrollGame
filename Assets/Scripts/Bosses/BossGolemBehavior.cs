@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 
 public class BossGolemBehavior : MonoBehaviour, IDamageable, IAttackState
@@ -155,7 +155,7 @@ public class BossGolemBehavior : MonoBehaviour, IDamageable, IAttackState
     yield return new WaitForSeconds(0.25f);  
     canBeParried = false;
 
-    // Wait out the rest of the animation so it doesn’t get cut off
+    // Wait out the rest of the animation so it doesn't get cut off
     yield return new WaitForSeconds(1.0f); // total wait = ~1.15s
 
     isAttacking = false;

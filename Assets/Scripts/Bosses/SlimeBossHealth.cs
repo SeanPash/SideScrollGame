@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 
 public class SlimeBossHealth : MonoBehaviour, IDamageable
@@ -64,7 +64,7 @@ public class SlimeBossHealth : MonoBehaviour, IDamageable
 {
     isDead = true;
 
-    // Tell SlimeBehavior to stop logic (but don’t disable it yet)
+    // Tell SlimeBehavior to stop logic (but don't disable it yet)
     if (slimeBossBehavior != null)
     {
         slimeBossBehavior.isDead = true;

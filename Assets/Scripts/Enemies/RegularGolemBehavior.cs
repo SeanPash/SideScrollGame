@@ -164,7 +164,7 @@ public class RegularGolemBehavior : MonoBehaviour, IDamageable, IAttackState
     IEnumerator ResetToBaseForm()
     {
         isAttacking = true;
-        animator.Play("Enemy Ability"); // form2 → rock
+        animator.Play("Enemy Ability"); // form2 -> rock
         yield return new WaitForSeconds(.3f);
         SwitchToForm(GolemForm.Base);
         hasRockAttacked = false;

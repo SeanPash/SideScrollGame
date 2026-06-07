@@ -13,68 +13,86 @@ public class ParrySystem : MonoBehaviour
         didSuccessfulParry = false;
         if (target == null) return false;
 
-       IAttackState attacker = target.GetComponentInParent<IAttackState>();
-if (attacker != null && attacker.IsAttacking())
-{
-    // Extra protection — check if the attack is *actually* parryable
-    var type = attacker.GetType();
-    var canBeParriedMethod = type.GetMethod("CanBeParried");
-    if (canBeParriedMethod != null)
-    {
-        bool canBeParried = (bool)canBeParriedMethod.Invoke(attacker, null);
-        if (canBeParried)
+        // ✅ Martial Hero Phase 1
+        var phase1 = target.GetComponentInParent<MartialHeroBehavior>();
+        if (phase1 != null && phase1.IsAttacking())
         {
-            attacker.Parry();
-            didSuccessfulParry = true;
-            lastParryTime = Time.time;
-            return true;
+            if (phase1.CanBeParried())
+            {
+                Debug.Log("[ParrySystem] Parried Phase1 attack.");
+                phase1.Parry();
+                didSuccessfulParry = true;
+                lastParryTime = Time.time;
+                return true;
+            }
+            else
+            {
+                Debug.Log("[ParrySystem] Phase1 is attacking but not parryable.");
+            }
         }
-    }
-}
 
+        // ✅ Martial Hero Phase 2
+        var phase2 = target.GetComponentInParent<MartialHeroPhase2>();
+        if (phase2 != null && phase2.IsAttacking())
+        {
+            if (phase2.IsInParryableState()) // Ensure this method is public
+            {
+                Debug.Log("[ParrySystem] Parried Phase2 attack.");
+                phase2.Parry();
+                didSuccessfulParry = true;
+                lastParryTime = Time.time;
+                return true;
+            }
+            else
+            {
+                Debug.Log("[ParrySystem] Phase2 is attacking but not in parryable state.");
+            }
+        }
 
-        // 2. Boss Golem — always accepts parry regardless of attack state
+        // ✅ Boss Golem — always accepts parry
         var bossStun = target.GetComponentInParent<BossGolemStun>();
         if (bossStun != null)
         {
             bossStun.RegisterParry();
+            Debug.Log("[ParrySystem] Parried Boss Golem.");
             didSuccessfulParry = true;
             lastParryTime = Time.time;
             return true;
         }
 
-        // 3. Martial Hero — ONLY parry if actively attacking AND in valid attack phase
-        var martialHero = target.GetComponentInParent<MartialHeroBehavior>();
-        if (martialHero != null && martialHero.IsAttacking())
-        {
-            // Must be in a parryable animation state (Attack1a/b or Attack2)
-            var method = martialHero.GetType().GetMethod("IsInParryableState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            bool isParryable = (bool)method.Invoke(martialHero, null);
-
-            if (isParryable)
-            {
-                martialHero.RegisterParry();
-                didSuccessfulParry = true;
-                lastParryTime = Time.time;
-                return true;
-            }
-        }
-        // 4. Crab Boss — Only parryable if using AttackB and not blue
-var crabBoss = target.GetComponentInParent<CrabBossBehaviorPhase1>();
+        // ✅ Crab Boss — Only parryable if not flashing blue
+        var crabBoss = target.GetComponentInParent<CrabBossBehaviorPhase1>();
         if (crabBoss != null && crabBoss.IsAttacking())
         {
             if (crabBoss.CanBeParried())
             {
-                crabBoss.OnParried(); // Or crabBoss.Stun() if that's your method
+                crabBoss.OnParried();
+                Debug.Log("[ParrySystem] Parried Crab Boss.");
                 didSuccessfulParry = true;
                 lastParryTime = Time.time;
                 return true;
             }
         }
 
+        // ✅ Samurai Knife Projectile
+var knife = target.GetComponent<SamuraiProjectile>();
+if (knife != null && !knife.IsParried() && knife.CanBeParried())
+{
+    knife.Parry();
+    Debug.Log("[ParrySystem] Knife projectile parried!");
+    didSuccessfulParry = true;
+    lastParryTime = Time.time;
+    return true;
+}
 
-        // 4. No valid parry target
         Debug.Log($"[ParrySystem] Target '{target.name}' is not parryable or not in a valid state.");
         return false;
+    }
+
+    public bool IsFacing(GameObject target)
+    {
+        Vector2 toTarget = target.transform.position - transform.position;
+        float dot = Vector2.Dot(toTarget.normalized, transform.right);
+        return dot > 0; // true if target is in front of player
     }
 }

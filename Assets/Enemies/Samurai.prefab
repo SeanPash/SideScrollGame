@@ -1,5 +1,67 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &259277950651080597
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3886898053028316702}
+  m_Layer: 8
+  m_Name: LeftSpawnPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3886898053028316702
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 259277950651080597}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.3, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5995200295952290622}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5378938067143702490
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7307360435797874396}
+  m_Layer: 8
+  m_Name: RightSpawnPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7307360435797874396
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5378938067143702490}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.3, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5995200295952290622}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8678821182955797559
 GameObject:
   m_ObjectHideFlags: 0
@@ -13,16 +75,17 @@ GameObject:
   - component: {fileID: 1373582210837943426}
   - component: {fileID: 565082648805123405}
   - component: {fileID: 3405764145350254270}
-  - component: {fileID: 3990038745499064016}
   - component: {fileID: 7158076567670674060}
   - component: {fileID: 6856053456376199081}
+  - component: {fileID: 3272878326465651240}
+  - component: {fileID: 2184582529448209595}
   m_Layer: 8
   m_Name: Samurai
   m_TagString: Boss
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &5995200295952290622
 Transform:
   m_ObjectHideFlags: 0
@@ -32,11 +95,13 @@ Transform:
   m_GameObject: {fileID: 8678821182955797559}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 9.28, y: -0.52, z: -0.07231254}
+  m_LocalPosition: {x: 10.28, y: -3.76, z: -0.07231254}
   m_LocalScale: {x: 2, y: 2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7911657557077078414}
+  - {fileID: 3886898053028316702}
+  - {fileID: 7307360435797874396}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &5755977597357984879
@@ -128,7 +193,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b2c1473b304a3f42a1191fa3c074cd6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  player: {fileID: 0}
+  player: {fileID: 4931679226002103417, guid: 8466a0a2579b1c04880be365824c5a7a, type: 3}
   rb: {fileID: 3405764145350254270}
   animator: {fileID: 1373582210837943426}
   spriteRenderer: {fileID: 5755977597357984879}
@@ -138,6 +203,19 @@ MonoBehaviour:
   attackDelay: 1.5
   chargeCooldown: 10
   teleportDistance: 1.5
+  knifeTeleportDistance: 4
+  minX: -9
+  maxX: 9
+  dashDistance: 5
+  dashSpeed: 12
+  dashDuration: 0.35
+  dashAttackCooldown: 8
+  currentAttackPhase: 
+  knifeProjectilePrefab: {fileID: 1565297016819307311, guid: b29a27b9a1f8a8742a09f3ed562d8676, type: 3}
+  leftSpawnPoint: {fileID: 3886898053028316702}
+  rightSpawnPoint: {fileID: 7307360435797874396}
+  teleportAttackCooldown: 8
+  smokeEffectPrefab: {fileID: 6813416509558619124, guid: 3b7f2c753d435d647a80f1f047a113e3, type: 3}
 --- !u!50 &3405764145350254270
 Rigidbody2D:
   serializedVersion: 5
@@ -165,8 +243,39 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 4
---- !u!61 &3990038745499064016
-BoxCollider2D:
+--- !u!114 &7158076567670674060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8678821182955797559}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f337812eccff2346b5bb7803dd371f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  stunDuration: 1
+  stunCooldown: 4
+  stunIconPrefab: {fileID: 0}
+  iconOffset: {x: 0.8, y: 1.2, z: 0}
+  behavior: {fileID: 565082648805123405}
+--- !u!114 &6856053456376199081
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8678821182955797559}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3d225cf818bc794d90e457e0811cf0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 13
+  currentHealth: 0
+--- !u!70 &3272878326465651240
+CapsuleCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -200,47 +309,56 @@ BoxCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_SpriteTilingProperty:
-    border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 2, y: 2}
-    newSize: {x: 2, y: 2}
-    adaptiveTilingThreshold: 0.5
-    drawMode: 0
-    adaptiveTiling: 0
-  m_AutoTiling: 0
-  m_Size: {x: 0.1, y: 0.4}
-  m_EdgeRadius: 0
---- !u!114 &7158076567670674060
+  m_Size: {x: 0.1, y: 0.33}
+  m_Direction: 0
+--- !u!114 &2184582529448209595
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8678821182955797559}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5f337812eccff2346b5bb7803dd371f5, type: 3}
+  m_Script: {fileID: 11500000, guid: e0ed04ea604c1b64ba4ba84178096b8b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 1
-  stunCooldown: 4
-  stunIconPrefab: {fileID: 0}
-  iconOffset: {x: 0.8, y: 1.2, z: 0}
-  behavior: {fileID: 565082648805123405}
---- !u!114 &6856053456376199081
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8678821182955797559}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d3d225cf818bc794d90e457e0811cf0e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  maxHealth: 100
+  player: {fileID: 4931679226002103417, guid: 8466a0a2579b1c04880be365824c5a7a, type: 3}
+  rb: {fileID: 3405764145350254270}
+  animator: {fileID: 1373582210837943426}
+  spriteRenderer: {fileID: 5755977597357984879}
+  parryHitboxPrefab: {fileID: 1667437680381287512, guid: f9c5aa7f4265ab443b695d3ab1a2c060, type: 3}
+  moveSpeed: 3
+  attackRange: 2
+  attackDelay: 1.5
+  chargeCooldown: 10
+  teleportDistance: 1.5
+  knifeTeleportDistance: 4
+  minX: -10
+  maxX: 10
+  dashDistance: 5
+  dashSpeed: 12
+  dashDuration: 0.35
+  dashAttackCooldown: 8
+  knifeDropCooldown: 12
+  groundSlamCooldown: 10
+  teleportKnifeCooldown: 8
+  spearPrefab: {fileID: 7247561857966211895, guid: b5866d78fe6dce549a3dcd007f7eaca5, type: 3}
+  spearSpawnY: 6
+  arenaLeftX: -8
+  arenaRightX: 8
+  numberOfSpears: 10
+  spearSpacing: 1.6
+  delayBetweenSpears: 0.15
+  spearSpawnPointLeft: {fileID: 0}
+  spearSpawnPointRight: {fileID: 0}
+  spearSpawnPointMiddle: {fileID: 0}
+  arenaBottomY: -3.7
+  knifeProjectilePrefab: {fileID: 1565297016819307311, guid: b29a27b9a1f8a8742a09f3ed562d8676, type: 3}
+  leftSpawnPoint: {fileID: 3886898053028316702}
+  rightSpawnPoint: {fileID: 7307360435797874396}
+  teleportAttackCooldown: 8
+  smokeEffectPrefab: {fileID: 6813416509558619124, guid: 3b7f2c753d435d647a80f1f047a113e3, type: 3}
 --- !u!1 &8872313071425552097
 GameObject:
   m_ObjectHideFlags: 0
@@ -253,7 +371,7 @@ GameObject:
   - component: {fileID: 2273545299656182913}
   m_Layer: 8
   m_Name: HitBox
-  m_TagString: Untagged
+  m_TagString: Boss
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

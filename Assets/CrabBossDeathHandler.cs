@@ -141,7 +141,7 @@
             "RedLineHorizontalShot(Clone)"
         };
 
-        foreach (GameObject obj in GameObject.FindObjectsOfType<GameObject>())
+foreach (GameObject obj in GameObject.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
         {
             foreach (string name in redLineNames)
             {

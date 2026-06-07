@@ -509,7 +509,7 @@ MonoBehaviour:
   maxJumps: 3
   dashDistance: 3
   attackHitbox: {fileID: 745676378591553032}
-  isControlEnabled: 1
+  isControlEnabled: 0
 --- !u!50 &7593220217759941133
 Rigidbody2D:
   serializedVersion: 5
@@ -717,7 +717,7 @@ MonoBehaviour:
   parrySystem: {fileID: 2472850916614731902}
   targetMask:
     serializedVersion: 2
-    m_Bits: 384
+    m_Bits: 2432
   parrySucceeded: 0
 --- !u!1 &8930813548733274770
 GameObject:

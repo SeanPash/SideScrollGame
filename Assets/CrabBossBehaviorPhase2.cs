@@ -15,13 +15,11 @@ public class CrabBossBehaviorPhase2 : MonoBehaviour
     public Transform groundPearlSpawnPoint;
     public Transform arcPearlSpawnPoint;
     public GameObject redLinePrefab;
-    private float globalAttackPauseUntil = 0f;
 
 
     private Rigidbody2D rb;
     private Animator animator;
 
-    private bool canAttackA = true;
     private bool canAttackB = true;
     private bool canAttackC = true;
     private bool canGroundShot = true;
@@ -36,10 +34,7 @@ public class CrabBossBehaviorPhase2 : MonoBehaviour
 
     private SpriteRenderer sr;
     private bool isActive = false;  // <- New flag to prevent early logic
-    private bool isDoingAttackA = false;
 
-    private bool verticalRedLineDone = false;
-    private bool horizontalRedLineDone = false;
     private float nextAlternatingAttackTime = 0f;
     private bool nextIsAttackA = true; // flips after each attack
 
@@ -266,15 +261,10 @@ public GameObject redLineStaticPrefab;  // <-- doesn't follow
         nextAlternatingAttackTime = Time.time + 5.5f; // 🔒 Set cooldown immediately
         nextIsAttackA = false;
 
-        isDoingAttackA = true;
         FaceDirection();
         isAttacking = true;
-        canAttackA = false;
         nextAttackTime = Time.time + attackDelay;
 
-        // Reset red line flags
-        verticalRedLineDone = false;
-        horizontalRedLineDone = false;
 
         // Fire vertical red line (async)
         PlayAnimation("Crab_Attack_A");
@@ -289,10 +279,8 @@ public GameObject redLineStaticPrefab;  // <-- doesn't follow
 
         // Exit attack logic while red lines finish in background
         isAttacking = false;
-        isDoingAttackA = false;
 
         yield return new WaitForSeconds(7f); // Local cooldown
-        canAttackA = true;
     }
 
 
@@ -307,7 +295,6 @@ public GameObject redLineStaticPrefab;  // <-- doesn't follow
 GameObject redLine = Instantiate(redLineTrackPrefab);
 
         // Set initial scale and position
-        float lineWidth = 0.2f;
         if (isVertical)
         {
 
@@ -386,12 +373,10 @@ GameObject redLine = Instantiate(redLineTrackPrefab);
         // ✅ At the VERY END of the coroutine:
         if (isVertical)
         {
-            verticalRedLineDone = true;
             Debug.Log("[CrabBoss] Vertical red line completed.");
         }
         else
         {
-            horizontalRedLineDone = true;
             Debug.Log("[CrabBoss] Horizontal red line completed.");
         }
 

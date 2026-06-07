@@ -18,7 +18,7 @@ public class ParryHitbox : MonoBehaviour
 
     public void ManualCheckParry()
     {
-        Collider2D[] hits = Physics2D.OverlapBoxAll(
+        Collider2D[] hits =Physics2D.OverlapBoxAll(
             transform.position,
             GetComponent<Collider2D>().bounds.size + new Vector3(1f, 0f, 0f),
             0f,
@@ -32,8 +32,7 @@ public class ParryHitbox : MonoBehaviour
             GameObject target = hit.gameObject;
             Debug.Log($"[ParryHitbox] Checking {target.name}");
 
-            bool result = parrySystem.Parry(target);  // Use centralized logic!
-
+bool result = parrySystem.Parry(target.transform.root.gameObject);
             if (result)
             {
                 parrySucceeded = true;

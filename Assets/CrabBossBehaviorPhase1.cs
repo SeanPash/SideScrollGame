@@ -264,7 +264,6 @@ private IEnumerator DoAttackB()
         // 1. Spawn red line
         GameObject redLine = Instantiate(redLinePrefab);
         redLine.transform.position = new Vector3(player.position.x, transform.position.y, 0f);
-        float lineWidth = 0.2f;
         redLine.transform.localScale = new Vector3(0.8f, 30f, 1f);
 
         // 2. Follow player's X for 3 seconds

@@ -7,31 +7,62 @@ public class PlayerSceneSpawn : MonoBehaviour
 
     void Start()
     {
-        // If a Warrior already exists in the scene (carried from a previous scene), don't spawn a new one
-        if (GameObject.FindWithTag("Warrior") != null)
+        GameObject existingPlayer = GameObject.FindWithTag("Warrior");
+
+        if (existingPlayer != null)
         {
-            Debug.Log("Warrior already exists — skipping spawn.");
+            Debug.Log("Warrior already exists — using existing player.");
+            existingPlayer.transform.position = spawnPoint.position;
+            existingPlayer.transform.localScale = new Vector3(2f, 2f, 1f);
+            existingPlayer.SetActive(true);
+
+            // ✅ Always re-enable control
+            WarriorController warriorController = existingPlayer.GetComponent<WarriorController>();
+            if (warriorController != null)
+            {
+                warriorController.isControlEnabled = true;
+                Debug.Log("Control re-enabled for existing Warrior.");
+            }
+
+            AssignToBossTrigger(existingPlayer);
             return;
         }
 
+        // Spawn new Warrior
         if (playerPrefab != null && spawnPoint != null)
         {
             GameObject newPlayer = Instantiate(playerPrefab, spawnPoint.position, Quaternion.identity);
+            newPlayer.name = "Warrior";
             newPlayer.transform.localScale = new Vector3(2f, 2f, 1f);
 
-            // Optional: Rename for clarity in Hierarchy
-            newPlayer.name = "Warrior";
+            // ✅ Re-enable control
+            WarriorController warriorController = newPlayer.GetComponent<WarriorController>();
+            if (warriorController != null)
+            {
+                warriorController.isControlEnabled = true;
+                Debug.Log("Control enabled for new Warrior.");
+            }
 
-            // Hook up to BossRoomTrigger if present
-            BossRoomTrigger bossTrigger = Object.FindFirstObjectByType<BossRoomTrigger>();
-            if (bossTrigger != null)
-            {
-                bossTrigger.AssignPlayer(newPlayer);
-            }
-            else
-            {
-                Debug.LogWarning("BossRoomTrigger not found in scene!");
-            }
+            AssignToBossTrigger(newPlayer);
+        }
+        else
+        {
+            Debug.LogWarning("Player prefab or spawnPoint is null!");
+        }
+    }
+
+    void AssignToBossTrigger(GameObject player)
+    {
+        BossRoomTrigger crabTrigger = Object.FindFirstObjectByType<BossRoomTrigger>();
+        if (crabTrigger != null)
+        {
+            crabTrigger.AssignPlayer(player);
+        }
+
+        MartialBossTriggerRoom martialTrigger = Object.FindFirstObjectByType<MartialBossTriggerRoom>();
+        if (martialTrigger != null)
+        {
+            martialTrigger.AssignPlayer(player);
         }
     }
 }

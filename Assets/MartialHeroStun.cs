@@ -58,27 +58,27 @@ public class MartialHeroStun : MonoBehaviour, IStunnable
         StartCoroutine(DoStun(duration));
     }
 
- private IEnumerator DoStun(float duration)
+private IEnumerator DoStun(float duration)
 {
     isStunned = true;
 
     behavior.rb.linearVelocity = Vector2.zero;
-    behavior.animator.Play("Parried");
 
     if (stunIconInstance != null)
         stunIconInstance.SetActive(true);
 
-    yield return new WaitForSeconds(0.4f); 
+    behavior.animator.Play("Parried");
+
+    yield return new WaitForSeconds(duration); // total stun duration
 
     behavior.animator.Play("Idle");
-
-    yield return new WaitForSeconds(duration - 0.4f);
 
     isStunned = false;
 
     if (stunIconInstance != null)
         stunIconInstance.SetActive(false);
 }
+
 
 
 

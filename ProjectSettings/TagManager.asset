@@ -8,6 +8,7 @@ TagManager:
   - Enemy
   - Warrior
   - Boss
+  - BossParryTarget
   layers:
   - Default
   - TransparentFX
@@ -36,11 +37,11 @@ TagManager:
   - 
   - 
   - 
-  - 
-  - 
-  - 
-  - 
-  - BackGround
+  - SmallTrees
+  - Tree
+  - Mountains
+  - Sky
+  - Background
   m_SortingLayers:
   - name: Default
     uniqueID: 0

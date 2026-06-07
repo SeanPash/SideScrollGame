@@ -162,7 +162,7 @@ public GameObject redLineStaticPrefab;  // <-- doesn't follow
         if (currentAnim != animName || isAttackAnim)
         {
             Debug.Log("[CrabBoss] Forcing animation: " + animName);
-            animator.Play(animName, -1, 0f);  // ← force restart from beginning
+            animator.Play(animName, -1, 0f);  // force restart from beginning
             currentAnim = animName;
         }
     }

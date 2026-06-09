@@ -1,21 +1,32 @@
 using UnityEngine;
 using System.Collections;
 
-public class TornadoSlimeBossHealth : MonoBehaviour, IDamageable
+// Health for the Tornado Slime Boss. Sole owner of its HP. Implements IDamageable
+// for player hits and IBossHealth for the phase manager.
+public class TornadoSlimeBossHealth : MonoBehaviour, IDamageable, IBossHealth
 {
+    [Header("Health")]
     public int maxHealth = 15;
     private int currentHealth;
+    private bool isDead = false;
+    private bool isInvulnerable = false;
 
+    [Header("References")]
     public SpriteRenderer spriteRenderer;
     public Animator animator;
     public TornadoSlimeBossBehavior tornadoBehavior;
+    public Rigidbody2D rb;
 
+    [Header("Damage Flash")]
     public Color flashColor = Color.red;
     public float flashDuration = 0.1f;
-
     private Color originalColor;
-    private bool isDead = false;
-    public Rigidbody2D rb;
+
+    // IBossHealth: health fraction for phase threshold checks.
+    public float HealthPercent => maxHealth > 0 ? (float)currentHealth / maxHealth : 0f;
+
+    // IBossHealth: true once the death sequence has started.
+    public bool IsDead => isDead;
 
     void Start()
     {
@@ -23,15 +34,23 @@ public class TornadoSlimeBossHealth : MonoBehaviour, IDamageable
         originalColor = spriteRenderer.color;
     }
 
+    // IBossHealth: toggles damage immunity while the boss is benched or hidden.
+    public void SetInvulnerable(bool value)
+    {
+        isInvulnerable = value;
+    }
+
+    // IDamageable: applies player damage, flashes red, and dies at zero HP.
     public void TakeDamage(int amount)
     {
-        if (isDead) return;
+        if (isDead || isInvulnerable) return;
 
         currentHealth -= amount;
         Debug.Log("Tornado Slime took damage. Current HP: " + currentHealth);
 
         StartCoroutine(FlashRed());
 
+        // Only play the hurt animation when not mid-attack.
         if (!tornadoBehavior.isAttacking)
         {
             AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
@@ -47,6 +66,7 @@ public class TornadoSlimeBossHealth : MonoBehaviour, IDamageable
         }
     }
 
+    // Brief red flash on hit.
     private IEnumerator FlashRed()
     {
         spriteRenderer.color = flashColor;
@@ -54,6 +74,7 @@ public class TornadoSlimeBossHealth : MonoBehaviour, IDamageable
         spriteRenderer.color = originalColor;
     }
 
+    // Stops the behavior, plays the death animation, then destroys the boss.
     private IEnumerator Die()
     {
         isDead = true;

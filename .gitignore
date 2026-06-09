@@ -71,6 +71,9 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
-# Local AI context and planning files
+# Local AI context and planning files (never commit Claude-related files)
 CLAUDE.md
+CLAUDE.local.md
+.claude/
+*.claude.md
 docs/

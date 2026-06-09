@@ -70,6 +70,13 @@ public class WarriorController : MonoBehaviour
 
     private int wallJumpCount = 0;
 
+    // Wall side tracking for parkour: a wall jump is only allowed off a wall on
+    // the opposite side from the last wall we jumped from. This forces the player
+    // to alternate walls to climb and prevents climbing a single wall, no matter
+    // how the wall colliders are built.
+    private int currentWallSide = 0;   // -1 = wall on left, +1 = wall on right, 0 = none
+    private int lastWallJumpSide = 0;  // side of the wall we last jumped from
+
 
     private float comboTimer = 0f;
     public float maxComboDelay = 1f; // seconds allowed between hits
@@ -175,6 +182,9 @@ bool holdingCrouch = Input.GetKey(KeyCode.S);
         {
             wallJumpCount = 0;
             jumpCount = 0;
+            // Dash and the wall-jump side reset refresh only when we land.
+            hasAirDashed = false;
+            lastWallJumpSide = 0;
             if (!Input.GetKey(KeyCode.S))
             {
                 if (!IsInAnyCrouch())
@@ -278,7 +288,7 @@ wasGrounded = isGrounded;
             if (moveInput > 0 && !isFacingRight) Flip();
             else if (moveInput < 0 && isFacingRight) Flip();
         }
-        if (Input.GetKeyDown(KeyCode.LeftShift) && !isDashing && !IsGrounded() && !isSliding && !isParrying && !isCharging && !isAttacking)
+        if (Input.GetKeyDown(KeyCode.LeftShift) && !isDashing && !IsGrounded() && !isSliding && !isParrying && !isCharging && !isAttacking && HasAbility(AbilityId.Dash))
         {
             if (!PlayerStats.Instance.UseStamina(15f)) return;
             if (IsGrounded() || !hasAirDashed)
@@ -300,7 +310,7 @@ wasGrounded = isGrounded;
         }
      bool holdingLeft = Input.GetKey(KeyCode.A);
     bool holdingRight = Input.GetKey(KeyCode.D);
-        if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isAttacking && !isAttackCooldown)) && (holdingLeft || holdingRight))
+        if (Input.GetKeyDown(KeyCode.LeftControl) && IsGrounded() && (!isSliding || (isAttacking && !isAttackCooldown)) && (holdingLeft || holdingRight) && HasAbility(AbilityId.Slide))
         {
             if (!PlayerStats.Instance.UseStamina(15f)) return;
             if (isAttacking && attackCoroutine != null)
@@ -421,23 +431,21 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
             {
                 float horizontalInput = Input.GetAxisRaw("Horizontal");
                 bool pressingOpposite = (isFacingRight && horizontalInput < 0) || (!isFacingRight && horizontalInput > 0);
-                bool isNewWall = currentWallID != lastWallID && currentWallID != -1;
 
-                if (pressingOpposite && !jumpedFromThisWall && Time.time - lastWallJumpTime >= wallJumpCooldown && jumpCount < maxJumps)
+                // Only allow a wall jump off a wall on the opposite side from the
+                // last one we jumped from. This forces alternating walls to climb
+                // and stops same-wall climbing. Wall jumps are independent of the
+                // air-jump and dash budgets, so they do not touch jumpCount or
+                // hasAirDashed (those refresh only on landing).
+                if (pressingOpposite && currentWallSide != lastWallJumpSide && Time.time - lastWallJumpTime >= wallJumpCooldown && HasAbility(AbilityId.WallJump))
                 {
-                    if (currentWallID != -1)
-                    {
-                        lastWallID = currentWallID;
-                        jumpedFromThisWall = true;
-                    }
+                    lastWallJumpSide = currentWallSide;
 
                     Vector2 jumpDirection = isFacingRight ? Vector2.left + Vector2.up : Vector2.right + Vector2.up;
                     float decayMultiplier = Mathf.Clamp01(1f - (wallJumpCount * 0.25f));
                     rb.linearVelocity = jumpDirection.normalized * jumpForce * 1.2f * decayMultiplier;
-                    jumpCount++;
                     lastWallJumpTime = Time.time;
                     StartCoroutine(TemporarilyReduceGravity());
-                    hasAirDashed = false;
                     Flip();
                     wallJumpFlipSuppressTimer = 0.15f;
                     StartCoroutine(HandleJumpAnimation());
@@ -447,12 +455,13 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
             }
 
 
-            // Normal jump fallback
-            if (jumpCount < maxJumps)
+            // Normal jump fallback (ground jump or double jump). Air-jump budget is
+            // MaxAirJumps(): 1 base, 2 with Double Jump unlocked. Dash refreshes on
+            // landing, not here, so a double jump does not refill the air dash.
+            if (jumpCount < MaxAirJumps())
             {
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
                 jumpCount++;
-                hasAirDashed = false;
                 StartCoroutine(HandleJumpAnimation());
                 return;
             }
@@ -487,7 +496,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
         }
 
         //slide
-        if (Input.GetKeyDown(KeyCode.LeftControl)  && IsGrounded() && !isSliding && (holdingLeft || holdingRight))
+        if (Input.GetKeyDown(KeyCode.LeftControl)  && IsGrounded() && !isSliding && (holdingLeft || holdingRight) && HasAbility(AbilityId.Slide))
         {
             if (!PlayerStats.Instance.UseStamina(15f)) return;
             if (isAttacking && attackCoroutine != null)
@@ -567,7 +576,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
                 if (chargedAttackTriggered || hasFinishedChargeAttack) return;
                 chargeTimer += Time.deltaTime;
 
-                if (!isCharging && !hasFinishedChargeAttack && chargeTimer >= 0.15f)
+                if (!isCharging && !hasFinishedChargeAttack && chargeTimer >= 0.15f && HasAbility(AbilityId.ChargeAttack))
                 {
                     isCharging = true;
                     lockFlipDuringCharge = true;
@@ -660,7 +669,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
 
         //Parry
 
-        if (Input.GetMouseButtonDown(1) && !isParryCooldown)
+        if (Input.GetMouseButtonDown(1) && !isParryCooldown && HasAbility(AbilityId.Parry))
         {
             parryCoroutine = StartCoroutine(DoParry());
             return;
@@ -868,7 +877,7 @@ if (animator.GetCurrentAnimatorStateInfo(0).IsName("CrouchExit") &&
         while (elapsed < attackDuration)
         {
             // Check for jump interrupt
-            if (Input.GetKeyDown(KeyCode.Space) && jumpCount < maxJumps)
+            if (Input.GetKeyDown(KeyCode.Space) && jumpCount < MaxAirJumps())
             {
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
                 jumpCount++;
@@ -1243,11 +1252,34 @@ if (!IsInAnyCrouch())
         StartCoroutine(StartCooldown());
     }
 
+    // Returns true if the player currently has the given ability. When no
+    // PlayerProgress exists in the scene (for example a standalone boss test
+    // scene), every ability is treated as unlocked so those scenes behave as before.
+    private bool HasAbility(AbilityId id)
+    {
+        return PlayerProgress.Instance == null || PlayerProgress.Instance.Has(id);
+    }
+
+    // Total mid-air jumps allowed: one base jump, plus one when Double Jump is
+    // unlocked. Wall jumps are separate and not limited by this.
+    private int MaxAirJumps()
+    {
+        return HasAbility(AbilityId.DoubleJump) ? 2 : 1;
+    }
+
     bool IsTouchingWall()
     {
         Collider2D wall = Physics2D.OverlapCircle(wallCheck.position, 0.08f, whatIsWall);
-        currentWallID = wall ? wall.gameObject.GetInstanceID() : -1;
-        return wall != null;
+        if (wall != null)
+        {
+            currentWallID = wall.gameObject.GetInstanceID();
+            // Side of the wall relative to the player, used for the alternating
+            // wall-jump rule. Independent of how many colliders form the wall.
+            currentWallSide = wall.bounds.center.x > transform.position.x ? 1 : -1;
+            return true;
+        }
+        currentWallID = -1;
+        return false;
     }
 
     bool IsGrounded()

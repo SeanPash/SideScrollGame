@@ -22,36 +22,41 @@ public class SlimeGooZone : MonoBehaviour
 
     private float tickTimer = 0f;
     private bool playerInside = false;
+    private PlayerHealth trackedHealth;
 
     void Start()
     {
         Destroy(gameObject, lifetime);
     }
 
-    void OnTriggerEnter2D(Collider2D other)
+    // Damage ticks run in Update while the player is inside. OnTriggerStay2D is
+    // not used because a sleeping Rigidbody2D stops generating Stay events.
+    void Update()
     {
-        if (other.isTrigger || !other.CompareTag("Warrior")) return;
-        playerInside = true;
-        ApplySlow(other.GetComponentInParent<WarriorController>());
-    }
-
-    void OnTriggerStay2D(Collider2D other)
-    {
-        if (other.isTrigger || !other.CompareTag("Warrior")) return;
+        if (!playerInside || trackedHealth == null) return;
 
         tickTimer += Time.deltaTime;
         if (tickTimer >= tickInterval)
         {
             tickTimer = 0f;
-            PlayerHealth health = other.GetComponentInParent<PlayerHealth>();
-            if (health != null) health.TakeDamage(damagePerTick);
+            trackedHealth.TakeDamage(damagePerTick);
         }
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.isTrigger || !other.CompareTag("Warrior")) return;
+        playerInside = true;
+        tickTimer = 0f;
+        trackedHealth = other.GetComponentInParent<PlayerHealth>();
+        ApplySlow(other.GetComponentInParent<WarriorController>());
     }
 
     void OnTriggerExit2D(Collider2D other)
     {
         if (other.isTrigger || !other.CompareTag("Warrior")) return;
         playerInside = false;
+        trackedHealth = null;
         RemoveSlow(other.GetComponentInParent<WarriorController>());
     }
 

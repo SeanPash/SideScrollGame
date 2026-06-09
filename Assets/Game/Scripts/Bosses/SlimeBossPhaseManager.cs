@@ -21,6 +21,12 @@ public class SlimeBossPhaseManager : MonoBehaviour
     [Header("Timing")]
     public float swapDelay = 2f;
 
+    [Header("Victory Signal")]
+    // Optional marker object deactivated when the encounter is truly complete.
+    // Progression systems (e.g. BossReward) can watch this instead of a single
+    // boss, which would misfire in a dual-boss room.
+    public GameObject encounterAliveMarker;
+
     private Phase phase = Phase.NotStarted;
 
     // First/second assignment, decided randomly at encounter start.
@@ -157,6 +163,7 @@ public class SlimeBossPhaseManager : MonoBehaviour
         Debug.Log("[PhaseManager] Encounter complete.");
         if (firstBar != null) firstBar.Hide();
         if (secondBar != null) secondBar.Hide();
+        if (encounterAliveMarker != null) encounterAliveMarker.SetActive(false);
         if (roomTrigger != null) roomTrigger.OnEncounterComplete();
     }
 

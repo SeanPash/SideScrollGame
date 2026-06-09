@@ -28,8 +28,10 @@ public class PlayerHealth : MonoBehaviour
         if (isDead || isInvulnerable) return;
 
         currentHealth -= damage;
-        if (currentHealth == 0)
+        // Use <= so overkill damage still triggers death.
+        if (currentHealth <= 0)
         {
+            currentHealth = 0;
             Die();
         }
         else
@@ -40,7 +42,24 @@ public class PlayerHealth : MonoBehaviour
 
     public void Die()
     {
+        if (isDead) return;
         isDead = true;
         animator.Play("Death");
+        StartCoroutine(RespawnRoutine());
+    }
+
+    // Let the death animation play, then return to the last checkpoint.
+    private System.Collections.IEnumerator RespawnRoutine()
+    {
+        yield return new WaitForSeconds(1.5f);
+        GameFlow.RespawnAtCheckpoint();
+    }
+
+    // Restore the player to full health and clear the dead state (used on respawn).
+    public void ReviveFull()
+    {
+        isDead = false;
+        currentHealth = PlayerStats.Instance != null ? PlayerStats.Instance.maxHealth : maxHealth;
+        if (animator != null) animator.Play("Idle");
     }
 }

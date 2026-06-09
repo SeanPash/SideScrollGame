@@ -13,6 +13,8 @@ public class ExplodingSlimeBehavior : MonoBehaviour
     public float explosionRange = 1.5f;
     public GameObject explosionPrefab;
     public LayerMask playerLayer;
+    public int explosionDamage = 2;
+    public float damageRadius = 1.5f;
 
     private Rigidbody2D rb;
     private Transform player;
@@ -93,10 +95,37 @@ public class ExplodingSlimeBehavior : MonoBehaviour
             yield return new WaitForSeconds(0.1f);
         }
 
-        // Explode
+        Explode();
+    }
+
+    // Detonates without the flashing windup. Used when the player kills the slime.
+    public void ExplodeImmediately()
+    {
+        if (isExploding) return;
+        isExploding = true;
+        StopAllCoroutines();
+        rb.linearVelocity = Vector2.zero;
+        Explode();
+    }
+
+    // Spawns the explosion effect, damages the Warrior if in range, and despawns.
+    // The explosion prefab itself stays a pure visual effect.
+    private void Explode()
+    {
         if (explosionPrefab != null)
         {
             Instantiate(explosionPrefab, transform.position, Quaternion.identity);
+        }
+
+        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, damageRadius);
+        foreach (Collider2D hit in hits)
+        {
+            if (!hit.isTrigger && hit.CompareTag("Warrior"))
+            {
+                PlayerHealth health = hit.GetComponentInParent<PlayerHealth>();
+                if (health != null) health.TakeDamage(explosionDamage);
+                break;
+            }
         }
 
         Destroy(gameObject);

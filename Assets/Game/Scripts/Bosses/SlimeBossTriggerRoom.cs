@@ -19,7 +19,10 @@ public class SlimeBossRoomTrigger : MonoBehaviour
     private WarriorController warriorController;
 
     private bool isInitialized = false;
-    public SlimeBossBehavior slimeBoss;
+    public SlimeBossPhaseManager phaseManager;
+
+    // Camera priority before the fight, restored when the encounter completes.
+    private int originalCameraPriority = 10;
 
     IEnumerator Start()
     {
@@ -53,6 +56,7 @@ public class SlimeBossRoomTrigger : MonoBehaviour
         if (!isInitialized || hasTriggered || !other.CompareTag("Warrior")) return;
 
         hasTriggered = true;
+        originalCameraPriority = slimeRoomCamera.Priority;
         slimeRoomCamera.Priority = 20;
         warriorController.isControlEnabled = false;
         StartCoroutine(MovePlayerAndResumeControl());
@@ -110,10 +114,10 @@ public class SlimeBossRoomTrigger : MonoBehaviour
         Debug.Log("[SlimeBossRoom] Boss intro complete. Activating boss...");
         yield return new WaitForSeconds(delayBeforeControl);
 
-        if (slimeBoss != null)
+        if (phaseManager != null)
         {
-            slimeBoss.ActivateBoss();
-            Debug.Log("[SlimeBossRoom] Slime Boss AI activated.");
+            phaseManager.StartEncounter();
+            Debug.Log("[SlimeBossRoom] Encounter started via phase manager.");
         }
 
         warriorController.isControlEnabled = true;
@@ -123,5 +127,15 @@ public class SlimeBossRoomTrigger : MonoBehaviour
     {
         player = spawnedPlayer;
         warriorController = player.GetComponent<WarriorController>();
+    }
+
+    // Called by the phase manager when both bosses are dead. Unlocks the arena
+    // and restores the camera.
+    public void OnEncounterComplete()
+    {
+        if (wallBlockerTop != null) wallBlockerTop.SetActive(false);
+        if (wallBlockerBottom != null) wallBlockerBottom.SetActive(false);
+        if (slimeRoomCamera != null) slimeRoomCamera.Priority = originalCameraPriority;
+        Debug.Log("[SlimeBossRoom] Encounter complete. Arena unlocked.");
     }
 }

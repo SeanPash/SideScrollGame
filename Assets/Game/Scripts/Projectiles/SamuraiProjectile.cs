@@ -5,6 +5,8 @@ public class SamuraiProjectile : MonoBehaviour
     public float speed = 8f;
     public float lifetime = 3f;
 
+    [SerializeField] private int reflectDamage = 10;  // Damage dealt to the boss by a reflected knife
+
     private Vector2 direction;
     private SpriteRenderer sr;
     private bool wasParried = false;
@@ -45,8 +47,7 @@ public class SamuraiProjectile : MonoBehaviour
 
         Debug.Log("[Knife] Deflected back!");
 
-        // Destroy the knife after it's parried and reflected
-        Destroy(gameObject);
+        // The reflected knife keeps flying; the lifetime timer from Start() cleans it up
     }
 
     public bool IsParried() => wasParried;
@@ -60,12 +61,14 @@ public class SamuraiProjectile : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        // If the projectile is parried and it hits the Boss, we just reflect and destroy it.
+        // A parried knife ignores everything except the Boss: damage it, then destroy the knife
         if (wasParried && other.CompareTag("Boss"))
         {
-            Debug.Log("[Knife] Parried projectile hit the Boss. Reflecting!");
+            IDamageable boss = other.GetComponentInParent<IDamageable>();
+            if (boss != null)
+                boss.TakeDamage(reflectDamage);
 
-            // no damage applied - destroy the projectile on reflection
+            Debug.Log("[Knife] Reflected knife hit the Boss for " + reflectDamage + " damage.");
             Destroy(gameObject);
         }
         else if (!wasParried && !other.isTrigger)

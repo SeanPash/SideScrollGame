@@ -1,8 +1,9 @@
 using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
 
-public class SlimeBossBehavior : MonoBehaviour
+// AI and attacks for the Slime Boss: jump drop attack, exploding mini slime spawns,
+// and the tracking slam special that leaves goo hazards. Health lives in SlimeBossHealth.
+public class SlimeBossBehavior : MonoBehaviour, IBoss
 {
     [Header("Movement")]
     public float moveSpeed = 2f;
@@ -27,25 +28,37 @@ public class SlimeBossBehavior : MonoBehaviour
     public GameObject miniSlimePrefab;
     public GameObject greenSlimeZonePrefab;
     public GameObject redOutlinePrefab;
+    public Collider2D bodyCollider;
 
     [Header("Ability Settings")]
     public float miniSlimeInterval = 15f;
     public float slamAttackInterval = 20f;
+    public float slamTrackDuration = 1.1f;
+    public float slamFlashDuration = 0.2f;
     public Transform[] miniSlimeSpawnPoints;
 
+    // State flags
     public bool isAttacking = false;
     private bool canAttack = true;
     private bool isActive = false;
     public bool isDead = false;
+
+    // Ability timers
     private float miniSlimeTimer = 0f;
     private float slamTimer = 0f;
-    private float maxHealth;
-    private float currentHealth;
 
-    void Start()
+    // Resolves the body collider and acquires the runtime-spawned player by tag.
+    // The Warrior is spawned at runtime, so an inspector reference cannot be used.
+    IEnumerator Start()
     {
-        maxHealth = 100f;
-        currentHealth = maxHealth;
+        if (bodyCollider == null) bodyCollider = GetComponent<Collider2D>();
+
+        while (player == null)
+        {
+            GameObject found = GameObject.FindWithTag("Warrior");
+            if (found != null) player = found.transform;
+            yield return null;
+        }
     }
 
     void Update()
@@ -65,6 +78,7 @@ public class SlimeBossBehavior : MonoBehaviour
         {
             slamTimer = 0f;
             StartCoroutine(SlamAttackSequence());
+            return;
         }
 
         float distance = Vector2.Distance(transform.position, player.position);
@@ -78,13 +92,49 @@ public class SlimeBossBehavior : MonoBehaviour
         }
     }
 
+    // ---- IBoss API ----
+
+    // Starts the boss AI when the encounter begins or this boss enters the arena.
     public void ActivateBoss()
     {
         if (isActive) return;
         isActive = true;
+        canAttack = true;
         Debug.Log("Slime Boss fight started.");
     }
 
+    // Benches the boss: stops AI, timers, and any in-progress attack. Safe to call
+    // mid-vanish: sprite, collider, and landing hitbox are restored to normal.
+    // Note: StopAllCoroutines also ends the Start player-acquisition loop, but the
+    // player always exists by the time the phase manager benches a boss.
+    public void EnterInactiveState()
+    {
+        isActive = false;
+        isAttacking = false;
+        canAttack = false;
+        StopAllCoroutines();
+        RestoreAfterVanish();
+        if (landingHitbox != null) landingHitbox.SetActive(false);
+        rb.linearVelocity = Vector2.zero;
+        animator.Play("Enemy Idle");
+    }
+
+    // Resumes the boss AI after being benched.
+    public void Reactivate()
+    {
+        isActive = true;
+        canAttack = true;
+        isAttacking = false;
+    }
+
+    // Final phase hook. The slime boss keeps its normal kit.
+    public void EnableDoublePhase()
+    {
+    }
+
+    // ---- Attacks ----
+
+    // Jump toward the player and drop down on them.
     IEnumerator DoDropAttack()
     {
         if (isDead) yield break;
@@ -104,6 +154,7 @@ public class SlimeBossBehavior : MonoBehaviour
 
         yield return new WaitForSeconds(0.2f);
 
+        // Lock the jump target before committing to the attack.
         float dir = Mathf.Sign(player.position.x - transform.position.x);
         float distanceToPlayer = Mathf.Abs(player.position.x - transform.position.x);
         float clampedDistance = Mathf.Min(distanceToPlayer, maxJumpDistance);
@@ -135,6 +186,9 @@ public class SlimeBossBehavior : MonoBehaviour
         canAttack = true;
     }
 
+    // Tracking slam special, repeated 3 times: vanish, track the player with a red
+    // outline, lock the spot, flash as a dodge window, slam at the locked spot,
+    // and leave a goo hazard.
     IEnumerator SlamAttackSequence()
     {
         isAttacking = true;
@@ -142,33 +196,43 @@ public class SlimeBossBehavior : MonoBehaviour
 
         for (int i = 0; i < 3; i++)
         {
-            // Disappear
+            // Vanish: hide sprite and disable collider so the player cannot hit
+            // an invisible boss.
             spriteRenderer.enabled = false;
+            if (bodyCollider != null) bodyCollider.enabled = false;
 
-            Vector2 target = new Vector2(player.position.x, transform.position.y);
-            GameObject redOutline = Instantiate(redOutlinePrefab, target, Quaternion.identity);
+            Vector2 outlinePos = new Vector2(player.position.x, transform.position.y);
+            GameObject redOutline = Instantiate(redOutlinePrefab, outlinePos, Quaternion.identity);
 
-            float trackDuration = 1.1f;
-            float flashDuration = 0.2f;
-
-            while (trackDuration > 0f)
+            // Track the player for the windup duration.
+            float trackTimer = slamTrackDuration;
+            while (trackTimer > 0f)
             {
-                if (redOutline != null)
-                    redOutline.transform.position = new Vector2(player.position.x, transform.position.y);
-                trackDuration -= Time.deltaTime;
+                outlinePos = new Vector2(player.position.x, transform.position.y);
+                if (redOutline != null) redOutline.transform.position = outlinePos;
+                trackTimer -= Time.deltaTime;
                 yield return null;
             }
 
+            // Lock the target and flash: this is the player's dodge window.
             if (redOutline != null)
-            {
                 redOutline.GetComponent<SpriteRenderer>().color = Color.red;
-                Destroy(redOutline, flashDuration);
+            yield return new WaitForSeconds(slamFlashDuration);
+            if (redOutline != null) Destroy(redOutline);
+
+            // Slam down at the locked position and leave goo.
+            transform.position = outlinePos;
+            RestoreAfterVanish();
+            animator.Play("Enemy Attack 1");
+
+            if (landingHitbox != null)
+            {
+                landingHitbox.SetActive(true);
+                StartCoroutine(DisableLandingHitboxAfterDelay(0.3f));
             }
 
-            // Slam in
-            transform.position = new Vector2(player.position.x, transform.position.y);
-            spriteRenderer.enabled = true;
-            Instantiate(greenSlimeZonePrefab, transform.position, Quaternion.identity);
+            if (greenSlimeZonePrefab != null)
+                Instantiate(greenSlimeZonePrefab, transform.position, Quaternion.identity);
 
             yield return new WaitForSeconds(0.5f);
         }
@@ -176,6 +240,7 @@ public class SlimeBossBehavior : MonoBehaviour
         isAttacking = false;
     }
 
+    // Turns the landing hitbox off after a delay.
     IEnumerator DisableLandingHitboxAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -183,6 +248,7 @@ public class SlimeBossBehavior : MonoBehaviour
             landingHitbox.SetActive(false);
     }
 
+    // Spawns exploding mini slimes at the configured points (or near the boss).
     IEnumerator SpawnMiniSlimesAbility()
     {
         Debug.Log("Slime Boss spawns exploding slimes");
@@ -201,6 +267,7 @@ public class SlimeBossBehavior : MonoBehaviour
         yield return null;
     }
 
+    // Lerps the boss up above the locked target position.
     IEnumerator JumpAbovePlayer(float targetX)
     {
         Vector2 start = transform.position;
@@ -218,51 +285,24 @@ public class SlimeBossBehavior : MonoBehaviour
         transform.position = target;
     }
 
+    // ---- Helpers ----
+
     bool IsGrounded()
     {
         return Physics2D.Raycast(transform.position, Vector2.down, 0.1f, groundLayer);
     }
 
-
-    public void TakeDamage(float amount)
+    // Stops horizontal movement and plays the idle animation.
+    void Idle()
     {
-        if (isDead) return;
-        currentHealth -= amount;
-        if (currentHealth <= 0f)
-        {
-            isDead = true;
-            Debug.Log("Slime Boss defeated!");
-        }
-    }
-
-    public float GetHealthPercent()
-    {
-        return (float)currentHealth / maxHealth;
-    }
-
-    public void EnterInactiveState()
-    {
-        isAttacking = false;
-        canAttack = false;
-        rb.linearVelocity = Vector2.zero;
+        rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
         animator.Play("Enemy Idle");
     }
 
-    public void Reactivate()
+    // Restores sprite and collider after a vanish-based attack.
+    private void RestoreAfterVanish()
     {
-        canAttack = true;
-        isAttacking = false;
-        ActivateBoss();
-    }
-    void Idle()
-{
-    rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
-    animator.Play("Enemy Idle");
-}
-
-
-    public void EnableDoublePhase()
-    {
-        // Optional: enhance AI or change behavior in double boss phase
+        if (spriteRenderer != null) spriteRenderer.enabled = true;
+        if (bodyCollider != null) bodyCollider.enabled = true;
     }
 }

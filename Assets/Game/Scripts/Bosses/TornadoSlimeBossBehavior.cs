@@ -66,10 +66,14 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
     void Update()
     {
-        if (isDead || isAttacking || player == null || !isActive) return;
+        if (isDead || player == null || !isActive) return;
 
+        // Ability timers accumulate even while attacking so the specials cannot
+        // be starved by long attacks; abilities only start below, between attacks.
         cloneTimer += Time.deltaTime;
         wallBounceTimer += Time.deltaTime;
+
+        if (isAttacking) return;
 
         if (cloneTimer >= cloneAttackInterval)
         {

@@ -63,10 +63,15 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
 
     void Update()
     {
-        if (isDead || isAttacking || player == null || !isActive) return;
+        if (isDead || player == null || !isActive) return;
 
+        // Ability timers accumulate even while attacking so the specials cannot
+        // be starved by back-to-back drop attacks; abilities only start below,
+        // between attacks.
         miniSlimeTimer += Time.deltaTime;
         slamTimer += Time.deltaTime;
+
+        if (isAttacking) return;
 
         if (miniSlimeTimer >= miniSlimeInterval)
         {

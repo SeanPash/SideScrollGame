@@ -12,9 +12,11 @@ public class PlayerHealth : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        currentHealth = PlayerStats.Instance.maxHealth;
+        // Fall back to the serialized max when no PlayerStats singleton exists
+        // (a boss-room scene started directly in the editor). Without this guard
+        // Start throws and the animator is never assigned.
+        currentHealth = PlayerStats.Instance != null ? PlayerStats.Instance.maxHealth : maxHealth;
         animator = GetComponent<Animator>();
-
     }
 
     // Update is called once per frame

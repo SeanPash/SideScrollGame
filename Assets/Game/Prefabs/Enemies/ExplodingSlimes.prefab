@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 8082615671246860228}
   - component: {fileID: -4612858992614571535}
   - component: {fileID: -5707614080396057179}
+  - component: {fileID: 4402593345610550024}
   m_Layer: 7
   m_Name: ExplodingSlimes
   m_TagString: Enemy
@@ -207,3 +208,20 @@ MonoBehaviour:
   playerLayer:
     serializedVersion: 2
     m_Bits: 64
+  explosionDamage: 2
+  damageRadius: 1.5
+--- !u!114 &4402593345610550024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7992951203939937485}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad4f24d3fa5d4b9cadca667fb5bf904d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 2
+  flashColor: {r: 1, g: 0, b: 0, a: 1}
+  flashDuration: 0.1

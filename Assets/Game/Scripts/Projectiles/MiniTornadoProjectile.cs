@@ -14,7 +14,7 @@ public class MiniTornadoProjectile : MonoBehaviour
     // then the heading locks and the shot flies straight so the player can
     // dodge the final approach.
     public float homingTurnRate = 270f;
-    public float homingDuration = 0.6f;
+    public float homingDuration = 0.3f;
 
     private Vector2 direction;
     private SpriteRenderer sr;

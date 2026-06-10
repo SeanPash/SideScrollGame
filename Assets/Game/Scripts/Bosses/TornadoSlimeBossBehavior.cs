@@ -59,7 +59,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     public float radialBurstInterval = 12f;
     public int radialBurstCount = 6;
     public float radialBurstSpeed = 7.5f;
-    public float radialHopVelocity = 7f;
+    public float radialHopVelocity = 9f;
 
     [Header("Cooldowns")]
     public float attackCooldown = 1.5f;
@@ -410,6 +410,19 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
                 animator.Play("Walk");
                 return;
             }
+        }
+
+        // Between attacks (cooldown running) the boss holds its ground and
+        // faces the player instead of micro-stepping to keep range; those
+        // constant tiny adjustments flickered between Walk and Idle and read
+        // as sliding. It still backs away above if the player crowds it.
+        if (!canAttack)
+        {
+            rb.WakeUp();
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            Face(dx);
+            animator.Play("Idle");
+            return;
         }
 
         // Close enough: face the player and idle until an attack is ready.
@@ -882,6 +895,22 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     {
         isAttacking = true;
         canAttack = false;
+
+        // Travel toward the arena center first: bursting from a wall pinned
+        // the whole fan against one side and the sweeps barely spread. The
+        // walk is harmless travel; the crouch beat below is the telegraph.
+        float centerX = (LeftBound + RightBound) * 0.5f;
+        float travelTimeout = 2.5f;
+        animator.Play("Walk");
+        while (travelTimeout > 0f && Mathf.Abs(transform.position.x - centerX) > 1f)
+        {
+            float dir = Mathf.Sign(centerX - transform.position.x);
+            rb.WakeUp();
+            rb.linearVelocity = new Vector2(dir * moveSpeed * 1.8f, rb.linearVelocity.y);
+            Face(dir);
+            travelTimeout -= Time.deltaTime;
+            yield return null;
+        }
 
         // Crouch beat so the hop reads as a windup, not a twitch.
         rb.linearVelocity = Vector2.zero;

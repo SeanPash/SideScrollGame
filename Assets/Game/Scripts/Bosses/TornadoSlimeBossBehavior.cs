@@ -184,6 +184,8 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
             }
         }
 
+        // A sleeping Rigidbody2D ignores velocity writes; wake it explicitly.
+        rb.WakeUp();
         rb.linearVelocity = new Vector2(direction.x * moveSpeed, rb.linearVelocity.y);
         animator.Play("Enemy Spin");
     }

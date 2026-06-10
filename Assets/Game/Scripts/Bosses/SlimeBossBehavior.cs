@@ -31,6 +31,9 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
     public Collider2D bodyCollider;
 
     [Header("Ability Settings")]
+    // Minimum spawn distance between a new mini slime and the player so the
+    // player has time to react before it closes in.
+    public float miniSpawnDistance = 6f;
     public float miniSlimeInterval = 15f;
     public float slamAttackInterval = 20f;
     public float slamTrackDuration = 1.1f;
@@ -93,14 +96,31 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
         }
 
         float distance = Vector2.Distance(transform.position, player.position);
-        if (distance <= detectionRange && canAttack)
+        if (distance <= attackRange && canAttack)
         {
             StartCoroutine(DoDropAttack());
+        }
+        else if (distance > attackRange)
+        {
+            // Never park after landing: chase the player between attacks.
+            FollowPlayer();
         }
         else
         {
             Idle();
         }
+    }
+
+    // Runs toward the player so the boss stays engaged wherever they move.
+    void FollowPlayer()
+    {
+        float dir = Mathf.Sign(player.position.x - transform.position.x);
+        // A sleeping Rigidbody2D ignores velocity writes; wake it explicitly.
+        rb.WakeUp();
+        rb.linearVelocity = new Vector2(dir * moveSpeed, rb.linearVelocity.y);
+        transform.localScale = new Vector3(dir * Mathf.Abs(transform.localScale.x),
+            transform.localScale.y, transform.localScale.z);
+        animator.Play("Enemy Run");
     }
 
     // ---- IBoss API ----
@@ -223,9 +243,15 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
             GameObject redOutline = Instantiate(redOutlinePrefab, outlinePos, Quaternion.identity);
 
             // Force a clearly visible telegraph regardless of the prefab's own
-            // (faint) serialized color: orange while tracking, red when locked.
+            // (faint, 1x1 unit) serialized state: a wide ground marker, orange
+            // while tracking, red when locked, drawn above goo zones.
+            redOutline.transform.localScale = new Vector3(2.5f, 1.0f, 1f);
             SpriteRenderer outlineSr = redOutline.GetComponent<SpriteRenderer>();
-            if (outlineSr != null) outlineSr.color = new Color(1f, 0.55f, 0f, 0.6f);
+            if (outlineSr != null)
+            {
+                outlineSr.color = new Color(1f, 0.55f, 0f, 0.6f);
+                outlineSr.sortingOrder = 12;
+            }
 
             // Track the player for the windup duration.
             float trackTimer = slamTrackDuration;
@@ -279,9 +305,23 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
 
         for (int i = 0; i < 2; i++)
         {
-            Vector2 spawnPos = (miniSlimeSpawnPoints != null && miniSlimeSpawnPoints.Length > i)
-                ? miniSlimeSpawnPoints[i].position
-                : (Vector2)transform.position + new Vector2(Random.Range(-4f, 4f), 0f);
+            Vector2 spawnPos;
+            if (miniSlimeSpawnPoints != null && miniSlimeSpawnPoints.Length > i
+                && miniSlimeSpawnPoints[i] != null)
+            {
+                spawnPos = miniSlimeSpawnPoints[i].position;
+            }
+            else
+            {
+                // Spawn on the boss's side of the player, at least
+                // miniSpawnDistance away, so the player sees them coming
+                // instead of having one detonate in their face.
+                float awayDir = Mathf.Sign(transform.position.x - player.position.x);
+                if (awayDir == 0f) awayDir = 1f;
+                spawnPos = new Vector2(
+                    player.position.x + awayDir * (miniSpawnDistance + i * 2f),
+                    transform.position.y);
+            }
 
             Instantiate(miniSlimePrefab, spawnPos, Quaternion.identity);
         }
@@ -311,7 +351,10 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
 
     bool IsGrounded()
     {
-        return Physics2D.Raycast(transform.position, Vector2.down, 0.1f, groundLayer);
+        // The pivot sits near the sprite center, so the ray must reach past the
+        // scaled body to the ground; 0.1 never hit and made drops run their
+        // full timeout.
+        return Physics2D.Raycast(transform.position, Vector2.down, 2f, groundLayer);
     }
 
     // Stops horizontal movement and plays the idle animation.

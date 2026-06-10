@@ -1,28 +1,41 @@
 using UnityEngine;
 using System.Collections;
 
+// Exploding mini slime minion spawned by the Slime Boss. Chases the player,
+// hops over obstacles when progress stalls, arms (red flashing) when close or
+// when its fuse runs out, keeps closing in while armed, then detonates.
+// Killing it through ExplodingSlimeHealth detonates it instantly.
 public class ExplodingSlimeBehavior : MonoBehaviour
 {
     [Header("Movement")]
-    public float moveSpeed = 2f;
+    public float moveSpeed = 2.6f;
+    // Armed slimes slow down a little so the player can still escape the blast.
+    public float armedSpeedMultiplier = 0.6f;
     public float hopForce = 5f;
-    public float checkRadius = 2f;
-    public float hopCooldown = 2f;
+    public float hopCooldown = 1.2f;
 
     [Header("Explosion")]
-    public float explosionRange = 1.5f;
+    // Distance to the player that starts the arming flash.
+    public float armRange = 1.2f;
+    // Detonates this long after spawning even if it never reaches the player.
+    public float fuseSeconds = 12f;
+    public float armDuration = 0.6f;
+    public int explosionDamage = 2;
+    public float damageRadius = 2.2f;
     public GameObject explosionPrefab;
     public LayerMask playerLayer;
-    public int explosionDamage = 2;
-    public float damageRadius = 1.5f;
 
     private Rigidbody2D rb;
     private Transform player;
     private SpriteRenderer spriteRenderer;
     private Color originalColor;
-    private bool isExploding = false;
-    private float hopTimer = 0f;
     private Animator animator;
+
+    private bool isExploding = false;
+    private bool isArmed = false;
+    private float hopTimer;
+    private float stuckTimer;
+    private float age;
 
     void Awake()
     {
@@ -40,62 +53,74 @@ public class ExplodingSlimeBehavior : MonoBehaviour
     {
         if (isExploding || player == null) return;
 
+        age += Time.deltaTime;
         float distance = Vector2.Distance(transform.position, player.position);
 
-        // Start exploding if in explosion range
-        if (distance <= explosionRange)
+        // Arm when close to the player or when the fuse expires.
+        if (!isArmed && (distance <= armRange || age >= fuseSeconds))
         {
-            StartCoroutine(ExplodeSequence());
-            return;
+            StartCoroutine(ArmAndExplode());
         }
 
-        // Move toward player
+        Chase(distance);
+    }
+
+    // Moves toward the player, hopping when blocked by terrain.
+    private void Chase(float distance)
+    {
         Vector2 dir = (player.position - transform.position).normalized;
-        rb.linearVelocity = new Vector2(dir.x * moveSpeed, rb.linearVelocity.y);
+        float speed = isArmed ? moveSpeed * armedSpeedMultiplier : moveSpeed;
+        // A sleeping Rigidbody2D ignores velocity writes; wake it explicitly.
+        rb.WakeUp();
+        rb.linearVelocity = new Vector2(dir.x * speed, rb.linearVelocity.y);
 
-        // Face direction
         if (dir.x != 0)
-            transform.localScale = new Vector3(Mathf.Sign(dir.x), 1, 1);
+            transform.localScale = new Vector3(
+                Mathf.Sign(dir.x) * Mathf.Abs(transform.localScale.x),
+                transform.localScale.y, transform.localScale.z);
 
-        // Play run animation if grounded
-        if (IsGrounded() && !animator.GetCurrentAnimatorStateInfo(0).IsName("Enemy Attack 1"))
+        if (IsGrounded() && animator != null
+            && !animator.GetCurrentAnimatorStateInfo(0).IsName("Enemy Attack 1"))
         {
             animator.Play("Enemy Run");
         }
 
-        // Try to hop if player is slightly farther and grounded
+        // Hop when blocked: it wants to move but makes no horizontal progress.
         hopTimer += Time.deltaTime;
-        if (distance <= checkRadius && distance > explosionRange && hopTimer >= hopCooldown && IsGrounded())
+        bool wantsToMove = distance > armRange * 0.5f;
+        bool blocked = wantsToMove && Mathf.Abs(rb.linearVelocity.x) < 0.05f;
+        stuckTimer = blocked ? stuckTimer + Time.deltaTime : 0f;
+
+        if (stuckTimer > 0.35f && hopTimer >= hopCooldown && IsGrounded())
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, hopForce);
+            rb.linearVelocity = new Vector2(dir.x * speed, hopForce);
             hopTimer = 0f;
+            stuckTimer = 0f;
         }
     }
 
     bool IsGrounded()
     {
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 0.2f, LayerMask.GetMask("Ground"));
-        return hit.collider != null;
+        return Physics2D.Raycast(transform.position, Vector2.down, 0.3f, LayerMask.GetMask("Ground")).collider != null;
     }
 
-    IEnumerator ExplodeSequence()
+    // Red warning flashes while still closing in, then detonate.
+    private IEnumerator ArmAndExplode()
     {
-        isExploding = true;
-        rb.linearVelocity = Vector2.zero;
+        isArmed = true;
+        if (animator != null) animator.Play("Enemy Attack 1");
 
-        if (animator != null)
-            animator.Play("Enemy Attack 1"); // Explosion animation
-
-        // Flash twice
-        for (int i = 0; i < 2; i++)
+        int flashes = 3;
+        float step = armDuration / (flashes * 2);
+        for (int i = 0; i < flashes; i++)
         {
             spriteRenderer.color = Color.red;
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(step);
             spriteRenderer.color = originalColor;
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(step);
         }
 
-        Explode();
+        ExplodeImmediately();
     }
 
     // Detonates without the flashing windup. Used when the player kills the slime.
@@ -134,6 +159,8 @@ public class ExplodingSlimeBehavior : MonoBehaviour
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, explosionRange);
+        Gizmos.DrawWireSphere(transform.position, armRange);
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, damageRadius);
     }
 }

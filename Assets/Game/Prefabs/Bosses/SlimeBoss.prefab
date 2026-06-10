@@ -82,7 +82,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 10
   m_Sprite: {fileID: 899315698257640460, guid: ea66931b963ce0c43ac4a901a9bd2e62, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -201,7 +201,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b25d6255fb5e344c91cbe99279ccd2d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 2
+  moveSpeed: 3
   detectionRange: 8
   attackCooldown: 3
   attackRange: 4
@@ -209,7 +209,7 @@ MonoBehaviour:
   jumpUpDuration: 0.2
   dropSpeed: 6
   dropStartDelay: 0.05
-  maxJumpDistance: 2
+  maxJumpDistance: 4
   player: {fileID: 4931679226002103417, guid: 8466a0a2579b1c04880be365824c5a7a, type: 3}
   rb: {fileID: 8743672343611214823}
   animator: {fileID: 4780982331375254268}
@@ -217,9 +217,20 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   spriteRenderer: {fileID: 6872213993541644438}
-  isAttacking: 0
-  canAttack: 1
   landingHitbox: {fileID: 4691072920889767907}
+  miniSlimePrefab: {fileID: 0}
+  greenSlimeZonePrefab: {fileID: 0}
+  redOutlinePrefab: {fileID: 0}
+  bodyCollider: {fileID: 0}
+  miniSpawnDistance: 6
+  miniSlimeInterval: 15
+  slamAttackInterval: 20
+  slamTrackDuration: 1.1
+  slamFlashDuration: 0.2
+  miniSlimeSpawnPoints: []
+  otherBoss: {fileID: 0}
+  minSeparation: 2.5
+  isAttacking: 0
   isDead: 0
 --- !u!114 &1934145028497593257
 MonoBehaviour:
@@ -236,10 +247,10 @@ MonoBehaviour:
   maxHealth: 15
   spriteRenderer: {fileID: 6872213993541644438}
   animator: {fileID: 4780982331375254268}
-  slimeBehavior: {fileID: 0}
+  slimeBossBehavior: {fileID: 0}
+  rb: {fileID: 0}
   flashColor: {r: 1, g: 0, b: 0, a: 1}
   flashDuration: 0.1
-  rb: {fileID: 0}
 --- !u!1 &4691072920889767907
 GameObject:
   m_ObjectHideFlags: 0

@@ -44,21 +44,20 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
     [Header("Vortex Pull")]
     // Stationary special: spin up in place and drag the player toward the
-    // vortex; if they are still point-blank when it ends, they take a burst
-    // hit. Escapable by running or dashing away from the pull.
+    // vortex, then erupt into a short spin lunge through their position.
+    // Escapable by running or dashing away from the pull.
     public float vortexInterval = 16f;
     public float vortexRange = 7f;
     public float vortexPullDuration = 1.6f;
     public float vortexPullSpeed = 3.5f;
-    public float vortexBurstRadius = 2f;
-    public int vortexBurstDamage = 1;
+    public float vortexLungeDuration = 0.45f;
 
     [Header("Radial Burst")]
     // Aerial special: hop straight up and fan mini tornadoes outward in a
-    // ring at the top of the hop.
+    // ring at the top of the hop; the shots curve in on the player.
     public float radialBurstInterval = 12f;
-    public int radialBurstCount = 8;
-    public float radialBurstSpeed = 8f;
+    public int radialBurstCount = 6;
+    public float radialBurstSpeed = 7.5f;
     public float radialHopVelocity = 7f;
 
     [Header("Cooldowns")]
@@ -314,6 +313,10 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         if (isActive) return;
         isActive = true;
         canAttack = true;
+        // Open with the vortex pull: a stationary, choreographed first move.
+        // Dashing first at a player still running into the arena is what
+        // produced the tangled opening exchanges.
+        vortexTimer = vortexInterval;
         Debug.Log("Tornado Slime Boss fight started.");
     }
 
@@ -339,6 +342,8 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         isActive = true;
         canAttack = true;
         isAttacking = false;
+        // Re-enter the fight with the vortex opener, same as activation.
+        vortexTimer = vortexInterval;
     }
 
     // Final phase: wall bounce gets more passes, more speed, and a shorter interval.
@@ -480,6 +485,21 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
             rb.WakeUp();
             rb.linearVelocity = new Vector2(dashDirection * speed, 0f);
             timer += Time.deltaTime;
+            yield return null;
+        }
+
+        // Carry through: never end the lunge standing inside the player. Keep
+        // sliding in the dash direction until there is clear separation, a
+        // wall stops it, or the extension budget runs out.
+        float carry = 0.5f;
+        while (carry > 0f && player != null
+            && Mathf.Abs(player.position.x - transform.position.x) < 1.2f)
+        {
+            float nextX = transform.position.x + dashDirection * dashSpeed * 0.4f * Time.deltaTime;
+            if (nextX < LeftBound || nextX > RightBound) break;
+            rb.WakeUp();
+            rb.linearVelocity = new Vector2(dashDirection * dashSpeed * 0.4f, 0f);
+            carry -= Time.deltaTime;
             yield return null;
         }
 
@@ -806,13 +826,37 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
             yield return null;
         }
 
-        // Burst: point-blank hit if the player stayed inside the radius.
-        if (player != null && targetHealth != null && !targetHealth.isDead
-            && Vector2.Distance(transform.position, player.position) <= vortexBurstRadius)
+        // Follow-up: a quick hop tell, then erupt out of the vortex into a
+        // short spin lunge through the player's position, so the pull always
+        // chains into a real attack instead of fizzling out.
+        if (player != null && targetHealth != null && !targetHealth.isDead)
         {
+            float lungeDir = Mathf.Sign(player.position.x - transform.position.x);
+            if (lungeDir == 0f) lungeDir = Mathf.Sign(transform.localScale.x);
+            Face(lungeDir);
+            rb.linearVelocity = Vector2.zero;
             animator.Play("Jump");
-            targetHealth.TakeDamage(vortexBurstDamage);
-            yield return new WaitForSeconds(0.25f);
+            yield return new WaitForSeconds(0.15f);
+
+            animator.Play("Spin");
+            SetContactDamage(true);
+            if (bodyCollider != null) bodyCollider.isTrigger = true;
+
+            float lungeTimer = 0f;
+            while (lungeTimer < vortexLungeDuration)
+            {
+                float speed = Mathf.Lerp(dashSpeed, dashSpeed * 0.3f, lungeTimer / vortexLungeDuration);
+                float nextX = transform.position.x + lungeDir * speed * Time.deltaTime;
+                if (nextX < LeftBound || nextX > RightBound) break;
+                rb.WakeUp();
+                rb.linearVelocity = new Vector2(lungeDir * speed, 0f);
+                lungeTimer += Time.deltaTime;
+                yield return null;
+            }
+
+            rb.linearVelocity = Vector2.zero;
+            RestoreSolidBody();
+            SetContactDamage(false);
         }
 
         animator.Play("Idle");
@@ -865,7 +909,8 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     }
 
     // Spawns the radial ring of mini tornadoes around the boss, evenly spaced
-    // over the full circle.
+    // over the full circle. Each shot homes toward the player briefly so the
+    // ring curves in on them instead of sailing over their head.
     private void FireRadialBurst()
     {
         if (miniProjectilePrefab == null) return;
@@ -879,6 +924,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
             var mini = proj.GetComponent<MiniTornadoProjectile>();
             mini.speed = radialBurstSpeed;
             mini.SetDirection(dir);
+            mini.SetHomingTarget(player);
         }
     }
 

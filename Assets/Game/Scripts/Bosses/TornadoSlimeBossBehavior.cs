@@ -99,6 +99,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // it is grounded. All flight attacks ride at exactly this height so they
     // hit the player instead of sailing above, and never sink below it.
     private float restingY = float.NaN;
+    private float groundedSettleTime;
 
     // Ride height for flight attacks: the captured standing height, falling
     // back to the wall bounce line before the first capture.
@@ -194,13 +195,20 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         }
         else vanishedTime = 0f;
 
-        // Capture the natural standing height whenever the boss is grounded
-        // with a solid body; flight attacks ride at this exact level.
+        // Capture the natural standing height only when the boss genuinely
+        // rests on the ground: solid body, sustained stillness, AND ground
+        // directly beneath. A single zero-velocity frame at altitude (the end
+        // of a dive) must never be mistaken for standing, or the height
+        // reference ratchets upward and the boss gets stuck in the air.
         if (!isAttacking && bodyCollider != null && !bodyCollider.isTrigger
-            && Mathf.Abs(rb.linearVelocity.y) < 0.05f)
+            && Mathf.Abs(rb.linearVelocity.y) < 0.05f
+            && Physics2D.Raycast(transform.position, Vector2.down, 2f, LayerMask.GetMask("Ground")))
         {
-            restingY = transform.position.y;
+            groundedSettleTime += Time.deltaTime;
+            if (groundedSettleTime > 0.3f)
+                restingY = transform.position.y;
         }
+        else groundedSettleTime = 0f;
 
         // Watchdog: pull the boss back up the moment anything drops it below
         // its standing height.

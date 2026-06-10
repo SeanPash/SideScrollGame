@@ -873,13 +873,10 @@ MonoBehaviour:
   dashDuration: 0.55
   standOffRange: 2.5
   projectileSpeed: 10
-  cloneSpawnDistance: 3
+  cloneSpawnDistance: 2.5
   cloneWindupTime: 0.35
   cloneTravelTime: 0.85
   volleyRetreatRange: 3.5
-  diveAttackInterval: 14
-  diveHeight: 4
-  diveSpeed: 11
   attackCooldown: 1.5
   cloneAttackInterval: 10
   wallBounceInterval: 20

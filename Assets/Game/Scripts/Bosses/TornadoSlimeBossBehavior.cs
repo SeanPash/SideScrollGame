@@ -36,18 +36,11 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     public float projectileSpeed = 10f;
     // Clones appear this far from the player, with a windup pause, so the
     // attack can be reacted to; they despawn quickly after converging.
-    public float cloneSpawnDistance = 3f;
+    public float cloneSpawnDistance = 2.5f;
     public float cloneWindupTime = 0.35f;
     public float cloneTravelTime = 0.85f;
     // The volley hop-back keeps at least this distance before firing.
     public float volleyRetreatRange = 3.5f;
-    [Header("Dive Attack")]
-    // Aerial special: climb to the top corner across from the player, hover,
-    // dive down through their position, and pull up past them.
-    public float diveAttackInterval = 14f;
-    public float diveHeight = 4f;
-    public float diveSpeed = 11f;
-
 
     [Header("Cooldowns")]
     public float attackCooldown = 1.5f;
@@ -81,7 +74,6 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // Ability timers
     private float cloneTimer;
     private float wallBounceTimer;
-    private float diveTimer;
 
     // Where the boss vanished from during the clone attack.
     private Vector3 lastKnownPosition;
@@ -167,7 +159,6 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         // be starved by long attacks; abilities only start below, between attacks.
         cloneTimer += Time.deltaTime;
         wallBounceTimer += Time.deltaTime;
-        diveTimer += Time.deltaTime;
 
         // Target refresh must tick during attacks too; it also re-applies the
         // player pass-through that collider toggles keep dropping.
@@ -197,8 +188,8 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
         // Capture the natural standing height only when the boss genuinely
         // rests on the ground: solid body, sustained stillness, AND ground
-        // directly beneath. A single zero-velocity frame at altitude (the end
-        // of a dive) must never be mistaken for standing, or the height
+        // directly beneath. A single zero-velocity frame at altitude (the top
+        // of a hop) must never be mistaken for standing, or the height
         // reference ratchets upward and the boss gets stuck in the air.
         if (!isAttacking && bodyCollider != null && !bodyCollider.isTrigger
             && Mathf.Abs(rb.linearVelocity.y) < 0.05f
@@ -242,13 +233,6 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         {
             wallBounceTimer = 0f;
             StartCoroutine(DoWallBounceAttack());
-            return;
-        }
-
-        if (diveTimer >= diveAttackInterval)
-        {
-            diveTimer = 0f;
-            StartCoroutine(DoDiveAttack());
             return;
         }
 
@@ -410,8 +394,15 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         isAttacking = true;
         canAttack = false;
 
-        // Telegraph: face the player and hop in place before committing.
-        Face(player.position.x - transform.position.x);
+        // Commit the dash direction before the telegraph so the hop shows the
+        // true attack line. Recomputing it after the wait let a player who
+        // crossed sides mid-telegraph send the boss lunging opposite to its
+        // facing, which read as the boss drifting backwards with the player.
+        float dashDirection = Mathf.Sign(player.position.x - transform.position.x);
+        if (dashDirection == 0f) dashDirection = Mathf.Sign(transform.localScale.x);
+
+        // Telegraph: face the dash line and hop in place before committing.
+        Face(dashDirection);
         rb.linearVelocity = Vector2.zero;
         animator.Play("Jump");
         yield return new WaitForSeconds(dashTelegraphTime);
@@ -423,8 +414,8 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         // never wedge against each other; contact damage still triggers.
         if (bodyCollider != null) bodyCollider.isTrigger = true;
 
-        float dashDirection = Mathf.Sign(player.position.x - transform.position.x);
-        if (dashDirection == 0f) dashDirection = Mathf.Sign(transform.localScale.x);
+        // Re-assert facing so the sprite can never disagree with the motion.
+        Face(dashDirection);
 
         // Decelerating lunge: fast launch that eases off instead of a long
         // flat push across the arena.
@@ -581,6 +572,14 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         clone.transform.localScale = new Vector3(
             faceDir * Mathf.Abs(clone.transform.localScale.x),
             clone.transform.localScale.y, clone.transform.localScale.z);
+        // Mirroring the scale shifts a sprite whose pivot is off center, which
+        // made one clone sit visibly closer to the player than the other.
+        // Recenter so the visible sprite sits exactly on the spawn point.
+        if (sr != null)
+        {
+            float drift = sr.bounds.center.x - clone.transform.position.x;
+            clone.transform.position -= new Vector3(drift, 0f, 0f);
+        }
     }
 
     // Holds the clone in a brief windup, then moves it toward the player's
@@ -592,7 +591,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         yield return new WaitForSeconds(cloneWindupTime);
         if (clone == null) yield break;
 
-        float speed = 6f;
+        float speed = 6.5f;
         Vector2 start = clone.transform.position;
         Vector2 targetPos = player.position;
         Vector2 direction = (targetPos - start).normalized;
@@ -637,21 +636,24 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         isAttacking = true;
         canAttack = false;
 
-        Vector3 left = wallBouncePoints[0].position;
-        Vector3 right = wallBouncePoints[1].position;
+        // Sweep between the margin-inset bounds, never the raw wall points,
+        // so the sprite always stays visually inside the arena instead of
+        // poking into the wall at each turnaround.
+        float leftX = LeftBound;
+        float rightX = RightBound;
 
         // Rush quickly to the nearest wall first (harmless travel).
         animator.Play("Spin");
         if (bodyCollider != null) bodyCollider.isTrigger = true;
-        Vector3 startWall = Mathf.Abs(transform.position.x - left.x) < Mathf.Abs(transform.position.x - right.x)
-            ? left : right;
-        float rushDir = Mathf.Sign(startWall.x - transform.position.x);
+        float startX = Mathf.Abs(transform.position.x - leftX) < Mathf.Abs(transform.position.x - rightX)
+            ? leftX : rightX;
+        float rushDir = Mathf.Sign(startX - transform.position.x);
         float rushTimeout = 2f;
-        while (rushTimeout > 0f && Mathf.Abs(transform.position.x - startWall.x) > 0.3f)
+        while (rushTimeout > 0f && Mathf.Abs(transform.position.x - startX) > 0.15f)
         {
-            // The body is in pass-through mode, so the floor cannot hold it:
-            // hold standing height manually.
-            ClampToRideHeight();
+            // The body is in pass-through mode, so the floor cannot hold it
+            // and walls cannot stop it: hold height and bounds manually.
+            ClampInsideArena();
             rb.WakeUp();
             rb.linearVelocity = new Vector2(rushDir * wallBounceSpeed * 1.4f, 0f);
             rushTimeout -= Time.deltaTime;
@@ -675,19 +677,19 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         // sweep grounded.
         for (int i = 0; i < passes; i++)
         {
-            Vector3 target = Mathf.Abs(transform.position.x - left.x) < Mathf.Abs(transform.position.x - right.x)
-                ? right : left;
-            float dir = Mathf.Sign(target.x - transform.position.x);
+            float targetX = Mathf.Abs(transform.position.x - leftX) < Mathf.Abs(transform.position.x - rightX)
+                ? rightX : leftX;
+            float dir = Mathf.Sign(targetX - transform.position.x);
             if (dir == 0f) dir = 1f;
 
             float legTimeout = 3f;
             while (legTimeout > 0f
-                && (dir > 0f ? transform.position.x < target.x - 0.2f
-                             : transform.position.x > target.x + 0.2f))
+                && (dir > 0f ? transform.position.x < targetX - 0.15f
+                             : transform.position.x > targetX + 0.15f))
             {
-                // Pass-through body: hold the sweep at standing height so it
-                // connects with the player.
-                ClampToRideHeight();
+                // Pass-through body: hold the sweep at standing height and
+                // inside the bounds so it connects without clipping a wall.
+                ClampInsideArena();
                 rb.WakeUp();
                 rb.linearVelocity = new Vector2(dir * speed, 0f);
                 legTimeout -= Time.deltaTime;
@@ -701,83 +703,6 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         rb.linearVelocity = Vector2.zero;
         RestoreSolidBody();
         SetContactDamage(false);
-        animator.Play("Idle");
-        isAttacking = false;
-        StartCoroutine(AttackCooldown());
-    }
-
-    // Aerial special: climb to the top corner across from the player, hover a
-    // beat, dive down through their position, then pull up while passing them.
-    IEnumerator DoDiveAttack()
-    {
-        isAttacking = true;
-        canAttack = false;
-
-        float floorY = wallBouncePoints != null && wallBouncePoints.Length >= 2
-            ? Mathf.Min(wallBouncePoints[0].position.y, wallBouncePoints[1].position.y)
-            : transform.position.y;
-
-        animator.Play("Spin");
-        // Fully airborne pass-through attack; damage arms only for the dive.
-        if (bodyCollider != null) bodyCollider.isTrigger = true;
-
-        // Climb to the upper corner on the far side from the player.
-        float cornerX = player.position.x < (LeftBound + RightBound) * 0.5f ? RightBound : LeftBound;
-        Vector2 climbTarget = new Vector2(cornerX, floorY + diveHeight);
-        float timeout = 2.5f;
-        while (timeout > 0f && Vector2.Distance(transform.position, climbTarget) > 0.5f)
-        {
-            Vector2 climbDir = (climbTarget - (Vector2)transform.position).normalized;
-            rb.WakeUp();
-            rb.linearVelocity = climbDir * diveSpeed;
-            timeout -= Time.deltaTime;
-            yield return null;
-        }
-        rb.linearVelocity = Vector2.zero;
-
-        // Hover telegraph aimed at the player, then commit to the dive.
-        Face(player.position.x - transform.position.x);
-        yield return new WaitForSeconds(0.35f);
-
-        SetContactDamage(true);
-        Vector2 diveTarget = player.position;
-        // The dive bottoms out at standing height, never below it.
-        diveTarget.y = Mathf.Max(diveTarget.y, RideY);
-        float diveDir = Mathf.Sign(diveTarget.x - transform.position.x);
-        if (diveDir == 0f) diveDir = 1f;
-
-        // Descend through the player's locked position.
-        timeout = 2f;
-        while (timeout > 0f
-            && (diveDir > 0f ? transform.position.x < diveTarget.x - 0.3f
-                             : transform.position.x > diveTarget.x + 0.3f))
-        {
-            ClampToRideHeight();
-            Vector2 dir = (diveTarget - (Vector2)transform.position).normalized;
-            rb.WakeUp();
-            rb.linearVelocity = dir * diveSpeed;
-            timeout -= Time.deltaTime;
-            yield return null;
-        }
-
-        // Pull up slightly while carrying on past them.
-        timeout = 0.5f;
-        while (timeout > 0f)
-        {
-            ClampToRideHeight();
-            float nextX = transform.position.x + diveDir * diveSpeed * 0.8f * Time.deltaTime;
-            if (nextX < LeftBound || nextX > RightBound) break;
-            rb.WakeUp();
-            rb.linearVelocity = new Vector2(diveDir * diveSpeed * 0.8f, diveSpeed * 0.5f);
-            timeout -= Time.deltaTime;
-            yield return null;
-        }
-
-        // Gravity settles the boss back to the floor afterwards.
-        rb.linearVelocity = Vector2.zero;
-        ClampInsideArena();
-        SetContactDamage(false);
-        RestoreSolidBody();
         animator.Play("Idle");
         isAttacking = false;
         StartCoroutine(AttackCooldown());

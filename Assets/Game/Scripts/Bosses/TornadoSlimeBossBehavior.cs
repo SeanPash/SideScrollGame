@@ -41,6 +41,10 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     public float cloneTravelTime = 0.85f;
     // The volley hop-back keeps at least this distance before firing.
     public float volleyRetreatRange = 3.5f;
+    // Wall bounce flight: vertical weave height above the floor and how close
+    // to the player's x the swoop-down begins.
+    public float bounceWeaveHeight = 2.2f;
+    public float swoopRange = 2.5f;
 
     [Header("Telegraphs")]
     // Stretched across the arena during the wall bounce windup.
@@ -87,6 +91,9 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // a corpse.
     private PlayerHealth targetHealth;
     private float playerRefreshTimer;
+
+    // Watchdog: how long the boss has been continuously vanished.
+    private float vanishedTime;
 
     // Resolves the body collider, disarms contact damage, and acquires the
     // runtime-spawned player by tag (inspector references cannot point at a
@@ -155,6 +162,34 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         {
             playerRefreshTimer = 0f;
             RefreshPlayerTarget();
+        }
+
+        // Watchdog: never stay vanished past the longest legitimate vanish
+        // window; self-heal whatever interrupted the attack coroutine.
+        if (spriteRenderer != null && !spriteRenderer.enabled)
+        {
+            vanishedTime += Time.deltaTime;
+            if (vanishedTime > 3f)
+            {
+                vanishedTime = 0f;
+                StopAllCoroutines();
+                RestoreAfterVanish();
+                SetContactDamage(false);
+                isAttacking = false;
+                StartCoroutine(AttackCooldown());
+            }
+        }
+        else vanishedTime = 0f;
+
+        // Watchdog: pull the boss back into the arena if anything ever drops
+        // it through the floor.
+        if (wallBouncePoints != null && wallBouncePoints.Length >= 2
+            && transform.position.y < wallBouncePoints[0].position.y - 3f)
+        {
+            transform.position = new Vector3(
+                Mathf.Clamp(transform.position.x, LeftBound, RightBound),
+                wallBouncePoints[0].position.y + 1f, 0f);
+            rb.linearVelocity = Vector2.zero;
         }
 
         if (isAttacking) return;
@@ -481,19 +516,25 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         if (clone == null) yield break;
 
         float speed = 6f;
-        float duration = cloneTravelTime;
-        float timer = 0f;
-        Vector2 direction = (player.position - clone.transform.position).normalized;
+        Vector2 start = clone.transform.position;
+        Vector2 targetPos = player.position;
+        Vector2 direction = (targetPos - start).normalized;
+        // Vanish the instant the clone crosses the convergence point (with a
+        // tiny overshoot); no lingering after the squeeze.
+        float travelDistance = Vector2.Distance(start, targetPos) + 0.6f;
+        float maxDistance = speed * cloneTravelTime;
+        float traveled = 0f;
 
         Rigidbody2D rbClone = clone.GetComponent<Rigidbody2D>();
         if (rbClone != null)
             rbClone.gravityScale = 0;
 
-        while (timer < duration)
+        while (traveled < travelDistance && traveled < maxDistance)
         {
             if (clone == null) yield break;
-            clone.transform.position += (Vector3)(direction * speed * Time.deltaTime);
-            timer += Time.deltaTime;
+            float step = speed * Time.deltaTime;
+            clone.transform.position += (Vector3)(direction * step);
+            traveled += step;
             yield return null;
         }
 
@@ -548,21 +589,38 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         int passes = doublePhase ? aggressiveWallBouncePasses : wallBouncePasses;
         float speed = doublePhase ? wallBounceSpeed * aggressiveSpeedMultiplier : wallBounceSpeed;
 
+        float floorY = Mathf.Min(left.y, right.y);
+
         for (int i = 0; i < passes; i++)
         {
             Vector3 target = (i % 2 == 0) ? right : left;
+            float dir = Mathf.Sign(target.x - transform.position.x);
+            if (dir == 0f) dir = 1f;
+            float wavePhase = Random.Range(0f, Mathf.PI * 2f);
 
-            // Per-leg timeout so a blocked path can never loop forever.
-            float legTimeout = 2.5f;
-            while (Vector2.Distance(transform.position, target) > 0.1f && legTimeout > 0f)
+            // Flying weave: rise and dip across the arena like a real tornado,
+            // swooping down at the player while passing their position.
+            float legTimeout = 3.5f;
+            while (legTimeout > 0f
+                && (dir > 0f ? transform.position.x < target.x - 0.2f
+                             : transform.position.x > target.x + 0.2f))
             {
-                Vector2 moveDir = (target - transform.position).normalized;
-                rb.linearVelocity = moveDir * speed;
+                float weaveY = floorY + bounceWeaveHeight
+                    * (0.55f + 0.45f * Mathf.Sin(transform.position.x * 1.1f + wavePhase));
+                float proximity = player != null
+                    ? Mathf.Clamp01(1f - Mathf.Abs(transform.position.x - player.position.x) / swoopRange)
+                    : 0f;
+                float desiredY = Mathf.Lerp(weaveY,
+                    (player != null ? player.position.y : floorY) + 0.2f, proximity);
+
+                rb.WakeUp();
+                rb.linearVelocity = new Vector2(dir * speed,
+                    Mathf.Clamp((desiredY - transform.position.y) * 6f, -9f, 9f));
                 legTimeout -= Time.deltaTime;
                 yield return null;
             }
             rb.linearVelocity = Vector2.zero;
-            yield return new WaitForSeconds(0.2f);
+            yield return new WaitForSeconds(0.15f);
         }
 
         rb.linearVelocity = Vector2.zero;

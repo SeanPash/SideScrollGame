@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7292134054708837864}
   - component: {fileID: 5948489734752830106}
-  - component: {fileID: 4984175845811712374}
+  - component: {fileID: 5656261685075356177}
   m_Layer: 6
   m_Name: AttackHitBox
   m_TagString: Untagged
@@ -79,7 +79,7 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.3, y: 0.3}
   m_EdgeRadius: 0
---- !u!114 &4984175845811712374
+--- !u!114 &5656261685075356177
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -353,8 +353,7 @@ GameObject:
   - component: {fileID: 7593220217759941133}
   - component: {fileID: 6726585185174684131}
   - component: {fileID: 3206524053189039627}
-  - component: {fileID: 2472850916614731902}
-  - component: {fileID: 4727007691320280581}
+  - component: {fileID: 3949983679777228469}
   m_Layer: 6
   m_Name: Warrior
   m_TagString: Warrior
@@ -503,7 +502,7 @@ MonoBehaviour:
   - Attack3
   maxWallJumps: 1
   trail: {fileID: 7212776778161900107}
-  parryHitbox: {fileID: 1444868688172550844}
+  parryHitbox: {fileID: 8121910014350897517}
   isBeingPushed: 0
   pushTimer: 0
   maxJumps: 3
@@ -590,7 +589,7 @@ MonoBehaviour:
   currentHealth: 20
   isInvulnerable: 0
   isDead: 0
---- !u!114 &2472850916614731902
+--- !u!114 &3949983679777228469
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -604,25 +603,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   regularParryCooldown: 4
   didSuccessfulParry: 0
---- !u!114 &4727007691320280581
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7948036723019461216}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e9b7aa3a48b7487478009d6c4b137b46, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  baseDamage: 3
-  finalComboBonus: 2
-  maxHealth: 100
-  maxStamina: 100
-  staminaRegenRate: 20
-  staminaRegenDelay: 1
-  currentStamina: 0
 --- !u!1 &8079868870512107458
 GameObject:
   m_ObjectHideFlags: 0
@@ -633,7 +613,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7501993984401552640}
   - component: {fileID: 6790860087619691373}
-  - component: {fileID: 1444868688172550844}
+  - component: {fileID: 8121910014350897517}
   m_Layer: 6
   m_Name: ParryHitBox
   m_TagString: Untagged
@@ -702,7 +682,7 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.5, y: 0.5}
   m_EdgeRadius: 0
---- !u!114 &1444868688172550844
+--- !u!114 &8121910014350897517
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -714,10 +694,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d3bad761326a71c44b8a9803d4e975b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  parrySystem: {fileID: 2472850916614731902}
+  parrySystem: {fileID: 3949983679777228469}
   targetMask:
     serializedVersion: 2
-    m_Bits: 2432
+    m_Bits: 384
   parrySucceeded: 0
 --- !u!1 &8930813548733274770
 GameObject:

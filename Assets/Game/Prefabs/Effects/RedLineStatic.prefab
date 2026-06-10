@@ -10,7 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4466028502846489969}
   - component: {fileID: 7002553317252613663}
-  - component: {fileID: -4844987643725134285}
   m_Layer: 31
   m_Name: RedLineStatic
   m_TagString: Untagged
@@ -88,17 +87,3 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &-4844987643725134285
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1450771251045581962}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4cdefa7e685d9c642acb3c77ae8ad668, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  blinkSpeed: 5
-  blinkStartDelay: 2

@@ -481,6 +481,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!115 &357815223
+MonoScript:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  serializedVersion: 7
+  m_DefaultReferences: {}
+  m_Icon: {fileID: 0}
+  m_Type: 0
+  m_ExecutionOrder: 0
+  m_ClassName: SlimeLandingPush
+  m_Namespace: 
+  m_AssemblyName: Assembly-CSharp
 --- !u!1 &388798693
 GameObject:
   m_ObjectHideFlags: 0
@@ -531,6 +546,7 @@ MonoBehaviour:
   slimeBossHealthBar: {fileID: 1685644083}
   tornadoBossHealthBar: {fileID: 848506312}
   swapDelay: 2
+  debugForceFirstBoss: 0
   encounterAliveMarker: {fileID: 1098070255}
 --- !u!114 &519431693 stripped
 MonoBehaviour:
@@ -712,7 +728,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &587821818
 Transform:
   m_ObjectHideFlags: 0
@@ -850,7 +866,7 @@ MonoBehaviour:
   moveSpeed: 3
   dashSpeed: 10
   spinRange: 4
-  projectileRange: 6
+  projectileRange: 9
   wallBounceSpeed: 12
   attackCooldown: 1.5
   cloneAttackInterval: 10
@@ -859,6 +875,8 @@ MonoBehaviour:
   aggressiveWallBouncePasses: 5
   aggressiveSpeedMultiplier: 1.3
   aggressiveWallBounceInterval: 12
+  otherBoss: {fileID: 0}
+  minSeparation: 2.5
   isDead: 0
   isAttacking: 0
   canAttack: 1
@@ -1138,6 +1156,57 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8827167949057644336}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &966089103
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 966089105}
+  - component: {fileID: 966089104}
+  m_Layer: 0
+  m_Name: GameSystems
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &966089104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 966089103}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9b7aa3a48b7487478009d6c4b137b46, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  baseDamage: 3
+  finalComboBonus: 2
+  maxHealth: 100
+  maxStamina: 100
+  staminaRegenRate: 20
+  staminaRegenDelay: 1
+  currentStamina: 0
+--- !u!4 &966089105
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 966089103}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1098070255
@@ -2284,7 +2353,8 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 485565144004139514, guid: d3f761f81b75bb84d86387e3eb58a0e5, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
@@ -3299,7 +3369,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1631822750}
-  - component: {fileID: 1631822751}
   m_Layer: 0
   m_Name: SpawnPoint
   m_TagString: Untagged
@@ -3322,20 +3391,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1631822751
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1631822748}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0f8955738322e6c46847ce0f2903a42e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerPrefab: {fileID: 7948036723019461216, guid: 8466a0a2579b1c04880be365824c5a7a, type: 3}
-  spawnPoint: {fileID: 1631822750}
 --- !u!1 &1639703733
 GameObject:
   m_ObjectHideFlags: 0
@@ -4124,6 +4179,10 @@ PrefabInstance:
       value: SlimeBoss
       objectReference: {fileID: 0}
     - target: {fileID: 1351879628923432086, guid: 5f814878af5ab5a40aef8953f9ef8b0b, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1351879628923432086, guid: 5f814878af5ab5a40aef8953f9ef8b0b, type: 3}
       propertyPath: m_TagString
       value: Boss
       objectReference: {fileID: 0}
@@ -4183,13 +4242,17 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5131239112378532043, guid: 5f814878af5ab5a40aef8953f9ef8b0b, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 4691072920889767907, guid: 5f814878af5ab5a40aef8953f9ef8b0b, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1110634706339537428}
+    - targetCorrespondingSourceObject: {fileID: 4691072920889767907, guid: 5f814878af5ab5a40aef8953f9ef8b0b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1110634706339537429}
   m_SourcePrefab: {fileID: 100100000, guid: 5f814878af5ab5a40aef8953f9ef8b0b, type: 3}
 --- !u!1 &1110634706339537425 stripped
 GameObject:
@@ -4220,6 +4283,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   damage: 1
   hitCooldown: 1
+--- !u!114 &1110634706339537429
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1110634706339537426}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 357815223}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pushForce: 5
 --- !u!50 &2176931844909473072 stripped
 Rigidbody2D:
   m_CorrespondingSourceObject: {fileID: 8743672343611214823, guid: 5f814878af5ab5a40aef8953f9ef8b0b, type: 3}
@@ -4254,3 +4330,4 @@ SceneRoots:
   - {fileID: 2089697537}
   - {fileID: 1098070256}
   - {fileID: 898179462}
+  - {fileID: 966089105}

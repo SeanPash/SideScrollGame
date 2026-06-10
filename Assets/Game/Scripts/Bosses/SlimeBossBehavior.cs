@@ -56,6 +56,12 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
     private float miniSlimeTimer = 0f;
     private float slamTimer = 0f;
 
+    // Target tracking: refreshed periodically so the boss can never chase a
+    // stale player reference, and checked for death so it stops attacking
+    // a corpse.
+    private PlayerHealth targetHealth;
+    private float playerRefreshTimer;
+
     // Resolves the body collider and acquires the runtime-spawned player by tag.
     // The Warrior is spawned at runtime, so an inspector reference cannot be used.
     IEnumerator Start()
@@ -64,15 +70,46 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
 
         while (player == null)
         {
-            GameObject found = GameObject.FindWithTag("Warrior");
-            if (found != null) player = found.transform;
+            RefreshPlayerTarget();
             yield return null;
+        }
+    }
+
+    // Re-resolves the Warrior by tag so destroyed or replaced players are
+    // never chased as ghosts.
+    private void RefreshPlayerTarget()
+    {
+        GameObject found = GameObject.FindWithTag("Warrior");
+        if (found == null) return;
+        if (player == null || player != found.transform)
+        {
+            player = found.transform;
+            targetHealth = found.GetComponentInParent<PlayerHealth>();
+        }
+        else if (targetHealth == null)
+        {
+            targetHealth = found.GetComponentInParent<PlayerHealth>();
         }
     }
 
     void Update()
     {
         if (isDead || player == null || !isActive) return;
+
+        playerRefreshTimer += Time.deltaTime;
+        if (playerRefreshTimer >= 2f)
+        {
+            playerRefreshTimer = 0f;
+            RefreshPlayerTarget();
+        }
+
+        // A defeated player ends the pressure; stand down instead of attacking
+        // the corpse during the respawn delay.
+        if (targetHealth != null && targetHealth.isDead)
+        {
+            if (!isAttacking) Idle();
+            return;
+        }
 
         // Ability timers accumulate even while attacking so the specials cannot
         // be starved by back-to-back drop attacks; abilities only start below,
@@ -214,6 +251,15 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
         yield return new WaitForSeconds(0.5f);
 
         isAttacking = false;
+        StartCoroutine(AttackRecovery());
+    }
+
+    // Recovery window between drop attacks; the boss repositions instead of
+    // chaining jumps back to back.
+    IEnumerator AttackRecovery()
+    {
+        canAttack = false;
+        yield return new WaitForSeconds(attackCooldown);
         canAttack = true;
     }
 

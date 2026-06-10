@@ -68,6 +68,12 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // Where the boss vanished from during the clone attack.
     private Vector3 lastKnownPosition;
 
+    // Target tracking: refreshed periodically so the boss can never chase a
+    // stale player reference, and checked for death so it stops attacking
+    // a corpse.
+    private PlayerHealth targetHealth;
+    private float playerRefreshTimer;
+
     // Resolves the body collider, disarms contact damage, and acquires the
     // runtime-spawned player by tag (inspector references cannot point at a
     // runtime-spawned Warrior).
@@ -84,9 +90,25 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
         while (player == null)
         {
-            GameObject found = GameObject.FindWithTag("Warrior");
-            if (found != null) player = found.transform;
+            RefreshPlayerTarget();
             yield return null;
+        }
+    }
+
+    // Re-resolves the Warrior by tag so destroyed or replaced players are
+    // never chased as ghosts.
+    private void RefreshPlayerTarget()
+    {
+        GameObject found = GameObject.FindWithTag("Warrior");
+        if (found == null) return;
+        if (player == null || player != found.transform)
+        {
+            player = found.transform;
+            targetHealth = found.GetComponentInParent<PlayerHealth>();
+        }
+        else if (targetHealth == null)
+        {
+            targetHealth = found.GetComponentInParent<PlayerHealth>();
         }
     }
 
@@ -100,6 +122,22 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         wallBounceTimer += Time.deltaTime;
 
         if (isAttacking) return;
+
+        playerRefreshTimer += Time.deltaTime;
+        if (playerRefreshTimer >= 2f)
+        {
+            playerRefreshTimer = 0f;
+            RefreshPlayerTarget();
+        }
+
+        // A defeated player ends the pressure; stand down instead of attacking
+        // the corpse during the respawn delay.
+        if (targetHealth != null && targetHealth.isDead)
+        {
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            animator.Play("Idle");
+            return;
+        }
 
         if (cloneTimer >= cloneAttackInterval)
         {

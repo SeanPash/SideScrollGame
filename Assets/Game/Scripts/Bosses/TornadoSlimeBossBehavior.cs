@@ -53,8 +53,9 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     public float vortexLungeDuration = 0.45f;
 
     [Header("Radial Burst")]
-    // Aerial special: hop straight up and fan mini tornadoes outward in a
-    // ring at the top of the hop; the shots curve in on the player.
+    // Aerial special: hop straight up and throw mini tornadoes in a downward
+    // fan; each one levels out at ground height and sweeps along the floor,
+    // rippling outward in both directions.
     public float radialBurstInterval = 12f;
     public int radialBurstCount = 6;
     public float radialBurstSpeed = 7.5f;
@@ -135,6 +136,13 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         rb.gravityScale = 1f;
         SetContactDamage(false);
 
+        // The inspector reference can point at the Warrior prefab asset, not
+        // the spawned instance; aiming at the asset made the opening attacks
+        // target a phantom until the first 2-second refresh fixed it. Always
+        // resolve the live player by tag instead.
+        player = null;
+        targetHealth = null;
+        targetRb = null;
         while (player == null)
         {
             RefreshPlayerTarget();
@@ -313,6 +321,9 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         if (isActive) return;
         isActive = true;
         canAttack = true;
+        // Make sure the live player is resolved before the opener fires; the
+        // periodic refresh would otherwise take 2 seconds to catch up.
+        RefreshPlayerTarget();
         // Open with the vortex pull: a stationary, choreographed first move.
         // Dashing first at a player still running into the arena is what
         // produced the tangled opening exchanges.
@@ -864,8 +875,9 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         StartCoroutine(AttackCooldown());
     }
 
-    // Timed special: hop straight up with a solid body and fan mini tornado
-    // projectiles outward in a ring at the top of the hop, then land.
+    // Timed special: hop straight up with a solid body and throw a downward
+    // fan of mini tornadoes at the top of the hop; the shots level out at
+    // ground height and sweep outward along the floor. Jump over them.
     IEnumerator DoRadialBurstAttack()
     {
         isAttacking = true;
@@ -908,23 +920,30 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         StartCoroutine(AttackCooldown());
     }
 
-    // Spawns the radial ring of mini tornadoes around the boss, evenly spaced
-    // over the full circle. Each shot homes toward the player briefly so the
-    // ring curves in on them instead of sailing over their head.
+    // Throws the burst as a fan across the lower semicircle (the upward
+    // shots never threatened anyone). Shallow shots level out far from the
+    // boss and steep shots level out close, so the sweeps read as a wave
+    // rippling outward along the floor in both directions.
     private void FireRadialBurst()
     {
         if (miniProjectilePrefab == null) return;
-        int count = Mathf.Max(3, radialBurstCount);
+        int count = Mathf.Max(2, radialBurstCount);
+
+        // Sweep height: the player's height when they are grounded, never
+        // above the boss's own standing line.
+        float sweepY = Mathf.Min(player.position.y, RideY);
+
         for (int i = 0; i < count; i++)
         {
-            float angle = (360f / count) * i * Mathf.Deg2Rad;
+            float angleDeg = Mathf.Lerp(200f, 340f, (float)i / (count - 1));
+            float angle = angleDeg * Mathf.Deg2Rad;
             Vector2 dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
             Vector3 spawnPos = transform.position + (Vector3)(dir * 0.8f);
             GameObject proj = Instantiate(miniProjectilePrefab, spawnPos, Quaternion.identity);
             var mini = proj.GetComponent<MiniTornadoProjectile>();
             mini.speed = radialBurstSpeed;
             mini.SetDirection(dir);
-            mini.SetHomingTarget(player);
+            mini.SetSweepLevel(sweepY);
         }
     }
 

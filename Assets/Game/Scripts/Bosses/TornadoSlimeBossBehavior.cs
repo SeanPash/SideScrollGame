@@ -59,10 +59,10 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     public float radialBurstInterval = 12f;
     public int radialBurstCount = 6;
     public float radialBurstSpeed = 7.5f;
-    public float radialHopVelocity = 12f;
+    public float radialHopVelocity = 10.5f;
 
     [Header("Cooldowns")]
-    public float attackCooldown = 1.2f;
+    public float attackCooldown = 1.5f;
     public float cloneAttackInterval = 10f;
     public float wallBounceInterval = 20f;
 

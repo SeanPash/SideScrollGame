@@ -877,7 +877,7 @@ MonoBehaviour:
   cloneWindupTime: 0.35
   cloneTravelTime: 0.85
   volleyRetreatRange: 3.5
-  attackCooldown: 1.2
+  attackCooldown: 1.5
   cloneAttackInterval: 10
   wallBounceInterval: 20
   wallBouncePasses: 3

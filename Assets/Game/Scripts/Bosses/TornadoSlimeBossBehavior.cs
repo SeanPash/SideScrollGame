@@ -33,11 +33,14 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     public float standOffRange = 1.3f;
     // Projectiles fire flat from player height at this speed so they reach
     // the player instead of clipping the ground short.
-    public float projectileSpeed = 9f;
+    public float projectileSpeed = 10f;
     // Clones appear this far from the player, with a windup pause, so the
-    // attack can be reacted to.
-    public float cloneSpawnDistance = 4f;
+    // attack can be reacted to; they despawn quickly after converging.
+    public float cloneSpawnDistance = 3f;
     public float cloneWindupTime = 0.35f;
+    public float cloneTravelTime = 0.85f;
+    // The volley hop-back keeps at least this distance before firing.
+    public float volleyRetreatRange = 3.5f;
 
     [Header("Telegraphs")]
     // Stretched across the arena during the wall bounce windup.
@@ -121,6 +124,19 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         {
             targetHealth = found.GetComponentInParent<PlayerHealth>();
         }
+        // Re-applied every refresh: Unity drops IgnoreCollision pairs whenever
+        // a collider is disabled, which the vanish attacks do.
+        IgnorePlayerCollision(found);
+    }
+
+    // The player can always move and slide through the tornado's body; damage
+    // comes only from the armed contact triggers, never from body shoving.
+    private void IgnorePlayerCollision(GameObject playerObj)
+    {
+        if (bodyCollider == null) return;
+        foreach (var col in playerObj.GetComponentsInChildren<Collider2D>())
+            if (!col.isTrigger)
+                Physics2D.IgnoreCollision(bodyCollider, col, true);
     }
 
     void Update()
@@ -132,14 +148,16 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         cloneTimer += Time.deltaTime;
         wallBounceTimer += Time.deltaTime;
 
-        if (isAttacking) return;
-
+        // Target refresh must tick during attacks too; it also re-applies the
+        // player pass-through that collider toggles keep dropping.
         playerRefreshTimer += Time.deltaTime;
         if (playerRefreshTimer >= 2f)
         {
             playerRefreshTimer = 0f;
             RefreshPlayerTarget();
         }
+
+        if (isAttacking) return;
 
         // A defeated player ends the pressure; stand down instead of attacking
         // the corpse during the respawn delay.
@@ -337,11 +355,19 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         }
 
         rb.linearVelocity = Vector2.zero;
-        if (bodyCollider != null) bodyCollider.isTrigger = false;
+        RestoreSolidBody();
         SetContactDamage(false);
         animator.Play("Idle");
         isAttacking = false;
         StartCoroutine(AttackCooldown());
+    }
+
+    // Makes the body solid again after a trigger-mode attack and immediately
+    // re-applies the player pass-through (fixture rebuilds drop ignore pairs).
+    private void RestoreSolidBody()
+    {
+        if (bodyCollider != null) bodyCollider.isTrigger = false;
+        if (player != null) IgnorePlayerCollision(player.gameObject);
     }
 
     // Spin in place and fire three mini tornado projectiles, each aimed at the
@@ -357,13 +383,13 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         float away = Mathf.Sign(transform.position.x - player.position.x);
         if (away == 0f) away = -Mathf.Sign(transform.localScale.x);
         float retreat = 0f;
-        while (Vector2.Distance(transform.position, player.position) < standOffRange + 0.7f
-            && retreat < 0.45f)
+        while (Vector2.Distance(transform.position, player.position) < volleyRetreatRange
+            && retreat < 0.6f)
         {
-            float nextX = transform.position.x + away * 6f * Time.deltaTime;
+            float nextX = transform.position.x + away * 7f * Time.deltaTime;
             if (nextX < LeftBound || nextX > RightBound) break;
             rb.WakeUp();
-            rb.linearVelocity = new Vector2(away * 6f, rb.linearVelocity.y);
+            rb.linearVelocity = new Vector2(away * 7f, rb.linearVelocity.y);
             retreat += Time.deltaTime;
             yield return null;
         }
@@ -455,7 +481,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         if (clone == null) yield break;
 
         float speed = 6f;
-        float duration = 1.2f;
+        float duration = cloneTravelTime;
         float timer = 0f;
         Vector2 direction = (player.position - clone.transform.position).normalized;
 
@@ -490,10 +516,12 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         Vector3 left = wallBouncePoints[0].position;
         Vector3 right = wallBouncePoints[1].position;
 
-        // Telegraph the arena-wide attack: a red line spanning the full bounce
-        // path makes it obvious the boss is about to sweep the whole room.
+        // Windup hop first, then flash the arena-wide red line just before the
+        // sweep actually starts so the warning is tied to the movement.
         rb.linearVelocity = Vector2.zero;
         animator.Play("Jump");
+        yield return new WaitForSeconds(dashTelegraphTime);
+
         GameObject warning = null;
         if (telegraphPrefab != null)
         {
@@ -504,15 +532,18 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
             var warnSr = warning.GetComponent<SpriteRenderer>();
             if (warnSr != null)
             {
-                warnSr.color = new Color(1f, 0.2f, 0.1f, 0.4f);
+                warnSr.color = new Color(1f, 0.2f, 0.1f, 0.45f);
                 warnSr.sortingOrder = 12;
             }
         }
-        yield return new WaitForSeconds(dashTelegraphTime * 2f);
+        yield return new WaitForSeconds(0.4f);
         if (warning != null) Destroy(warning);
 
         animator.Play("Spin");
         SetContactDamage(true);
+        // The sweep passes through the player like the lunge; damage comes
+        // from the armed contact trigger, and slides phase straight through.
+        if (bodyCollider != null) bodyCollider.isTrigger = true;
 
         int passes = doublePhase ? aggressiveWallBouncePasses : wallBouncePasses;
         float speed = doublePhase ? wallBounceSpeed * aggressiveSpeedMultiplier : wallBounceSpeed;
@@ -535,6 +566,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         }
 
         rb.linearVelocity = Vector2.zero;
+        RestoreSolidBody();
         SetContactDamage(false);
         animator.Play("Idle");
         isAttacking = false;
@@ -567,6 +599,9 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
             rb.linearVelocity = Vector2.zero;
         }
         transform.rotation = Quaternion.identity;
+        // Re-enabling the collider drops IgnoreCollision pairs; restore the
+        // player pass-through immediately.
+        if (player != null) IgnorePlayerCollision(player.gameObject);
     }
 
     // Arms or disarms the contact damage component used during spin attacks.

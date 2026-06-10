@@ -31,6 +31,17 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // The chase stops at this distance so the boss looms instead of standing
     // inside the player.
     public float standOffRange = 1.3f;
+    // Projectiles fire flat from player height at this speed so they reach
+    // the player instead of clipping the ground short.
+    public float projectileSpeed = 9f;
+    // Clones appear this far from the player, with a windup pause, so the
+    // attack can be reacted to.
+    public float cloneSpawnDistance = 4f;
+    public float cloneWindupTime = 0.35f;
+
+    [Header("Telegraphs")]
+    // Stretched across the arena during the wall bounce windup.
+    public GameObject telegraphPrefab;
 
     [Header("Cooldowns")]
     public float attackCooldown = 1.5f;
@@ -361,10 +372,17 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         for (int i = 0; i < 3; i++)
         {
             yield return new WaitForSeconds(1f);
-            Face(player.position.x - transform.position.x);
-            GameObject proj = Instantiate(miniProjectilePrefab, transform.position, Quaternion.identity);
-            Vector2 dir = (player.position - transform.position).normalized;
-            proj.GetComponent<MiniTornadoProjectile>().SetDirection(dir);
+            float toPlayer = Mathf.Sign(player.position.x - transform.position.x);
+            if (toPlayer == 0f) toPlayer = Mathf.Sign(transform.localScale.x);
+            Face(toPlayer);
+
+            // Fire flat from the player's height so the shot travels straight
+            // at them instead of angling down into the ground short.
+            Vector3 spawnPos = new Vector3(transform.position.x + toPlayer * 0.8f, player.position.y, 0f);
+            GameObject proj = Instantiate(miniProjectilePrefab, spawnPos, Quaternion.identity);
+            var mini = proj.GetComponent<MiniTornadoProjectile>();
+            mini.speed = projectileSpeed;
+            mini.SetDirection(player.position - spawnPos);
         }
 
         yield return new WaitForSeconds(0.5f);
@@ -388,11 +406,12 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         rb.linearVelocity = Vector2.zero;
         rb.simulated = false;
 
-        // Spawn one clone on each side of the player. Clones spin and are
-        // slightly translucent so they read as copies, not a second boss.
+        // Spawn one clone on each side of the player, far enough out that the
+        // converge can be dodged. Clones spin and are slightly translucent so
+        // they read as copies, not a second boss.
         Vector3 playerPos = player.position;
-        GameObject leftClone = Instantiate(clonePrefab, playerPos + new Vector3(-2f, 0f, 0f), Quaternion.identity);
-        GameObject rightClone = Instantiate(clonePrefab, playerPos + new Vector3(2f, 0f, 0f), Quaternion.identity);
+        GameObject leftClone = Instantiate(clonePrefab, playerPos + new Vector3(-cloneSpawnDistance, 0f, 0f), Quaternion.identity);
+        GameObject rightClone = Instantiate(clonePrefab, playerPos + new Vector3(cloneSpawnDistance, 0f, 0f), Quaternion.identity);
         SetupClone(leftClone, 1f);
         SetupClone(rightClone, -1f);
 
@@ -426,9 +445,15 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
             clone.transform.localScale.y, clone.transform.localScale.z);
     }
 
-    // Moves one clone toward the player's position at spawn time, then removes it.
+    // Holds the clone in a brief windup, then moves it toward the player's
+    // position and removes it.
     private IEnumerator MoveCloneToPlayer(GameObject clone)
     {
+        // Windup: visible and spinning but not yet moving, giving the player
+        // a beat to pick a dodge direction.
+        yield return new WaitForSeconds(cloneWindupTime);
+        if (clone == null) yield break;
+
         float speed = 6f;
         float duration = 1.2f;
         float timer = 0f;
@@ -462,16 +487,32 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         isAttacking = true;
         canAttack = false;
 
-        // Telegraph the arena-wide attack before it starts.
+        Vector3 left = wallBouncePoints[0].position;
+        Vector3 right = wallBouncePoints[1].position;
+
+        // Telegraph the arena-wide attack: a red line spanning the full bounce
+        // path makes it obvious the boss is about to sweep the whole room.
         rb.linearVelocity = Vector2.zero;
         animator.Play("Jump");
-        yield return new WaitForSeconds(dashTelegraphTime);
+        GameObject warning = null;
+        if (telegraphPrefab != null)
+        {
+            Vector3 mid = (left + right) * 0.5f;
+            warning = Instantiate(telegraphPrefab,
+                new Vector3(mid.x, transform.position.y, 0f), Quaternion.identity);
+            warning.transform.localScale = new Vector3(Mathf.Abs(right.x - left.x), 1.4f, 1f);
+            var warnSr = warning.GetComponent<SpriteRenderer>();
+            if (warnSr != null)
+            {
+                warnSr.color = new Color(1f, 0.2f, 0.1f, 0.4f);
+                warnSr.sortingOrder = 12;
+            }
+        }
+        yield return new WaitForSeconds(dashTelegraphTime * 2f);
+        if (warning != null) Destroy(warning);
 
         animator.Play("Spin");
         SetContactDamage(true);
-
-        Vector3 left = wallBouncePoints[0].position;
-        Vector3 right = wallBouncePoints[1].position;
 
         int passes = doublePhase ? aggressiveWallBouncePasses : wallBouncePasses;
         float speed = doublePhase ? wallBounceSpeed * aggressiveSpeedMultiplier : wallBounceSpeed;

@@ -9,13 +9,17 @@ public class MiniTornadoProjectile : MonoBehaviour
     public float lifetime = 4f;
     public int damage = 1;
 
+    [Header("Homing")]
+    // Optional steering toward a target: sharp tracking for a short window,
+    // then the heading locks and the shot flies straight so the player can
+    // dodge the final approach.
+    public float homingTurnRate = 270f;
+    public float homingDuration = 0.6f;
+
     private Vector2 direction;
     private SpriteRenderer sr;
-
-    // Ground sweep mode: when descending past the sweep height, the shot
-    // levels out and runs horizontally, like a small tornado on the floor.
-    private bool sweepEnabled;
-    private float sweepLevelY;
+    private Transform homingTarget;
+    private float homingTime;
 
     void Awake()
     {
@@ -34,25 +38,24 @@ public class MiniTornadoProjectile : MonoBehaviour
         if (sr != null) sr.flipX = direction.x < 0f;
     }
 
-    // Arms the ground sweep: a descending shot flattens into horizontal
-    // travel once it falls to the given height.
-    public void SetSweepLevel(float levelY)
+    // Arms homing toward the target for the configured window.
+    public void SetHomingTarget(Transform target)
     {
-        sweepEnabled = true;
-        sweepLevelY = levelY;
+        homingTarget = target;
+        homingTime = homingDuration;
     }
 
     void Update()
     {
-        // Level out into the floor sweep once the shot descends far enough,
-        // keeping whatever horizontal direction it was thrown with.
-        if (sweepEnabled && direction.y < 0f && transform.position.y <= sweepLevelY)
+        // Steer hard toward the target while the homing window lasts, then
+        // fly straight along the locked heading.
+        if (homingTarget != null && homingTime > 0f)
         {
-            float dirX = direction.x != 0f ? Mathf.Sign(direction.x) : 1f;
-            direction = new Vector2(dirX, 0f);
-            transform.position = new Vector3(transform.position.x, sweepLevelY, transform.position.z);
+            homingTime -= Time.deltaTime;
+            Vector2 toTarget = ((Vector2)homingTarget.position - (Vector2)transform.position).normalized;
+            float maxRadians = homingTurnRate * Mathf.Deg2Rad * Time.deltaTime;
+            direction = ((Vector2)Vector3.RotateTowards(direction, toTarget, maxRadians, 0f)).normalized;
             if (sr != null) sr.flipX = direction.x < 0f;
-            sweepEnabled = false;
         }
 
         transform.position += (Vector3)(direction * speed * Time.deltaTime);

@@ -54,8 +54,8 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
     [Header("Radial Burst")]
     // Aerial special: hop straight up and throw mini tornadoes in a downward
-    // fan; each one levels out at ground height and sweeps along the floor,
-    // rippling outward in both directions.
+    // fan; each shot tracks the player hard for a brief window, then locks
+    // its heading so the final approach can be dodged.
     public float radialBurstInterval = 12f;
     public int radialBurstCount = 6;
     public float radialBurstSpeed = 7.5f;
@@ -889,8 +889,8 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     }
 
     // Timed special: hop straight up with a solid body and throw a downward
-    // fan of mini tornadoes at the top of the hop; the shots level out at
-    // ground height and sweep outward along the floor. Jump over them.
+    // fan of mini tornadoes at the top of the hop; the shots curve in on the
+    // player briefly, then commit to straight, dodgeable lines.
     IEnumerator DoRadialBurstAttack()
     {
         isAttacking = true;
@@ -950,18 +950,13 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     }
 
     // Throws the burst as a fan across the lower semicircle (the upward
-    // shots never threatened anyone). Shallow shots level out far from the
-    // boss and steep shots level out close, so the sweeps read as a wave
-    // rippling outward along the floor in both directions.
+    // shots never threatened anyone). Each shot homes hard at the player
+    // for a short window before locking straight, so the fan converges on
+    // them from spread angles and the staggered arrivals stay dodgeable.
     private void FireRadialBurst()
     {
         if (miniProjectilePrefab == null) return;
         int count = Mathf.Max(2, radialBurstCount);
-
-        // Sweep height: the player's height when they are grounded, never
-        // above the boss's own standing line.
-        float sweepY = Mathf.Min(player.position.y, RideY);
-
         for (int i = 0; i < count; i++)
         {
             float angleDeg = Mathf.Lerp(200f, 340f, (float)i / (count - 1));
@@ -972,7 +967,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
             var mini = proj.GetComponent<MiniTornadoProjectile>();
             mini.speed = radialBurstSpeed;
             mini.SetDirection(dir);
-            mini.SetSweepLevel(sweepY);
+            mini.SetHomingTarget(player);
         }
     }
 

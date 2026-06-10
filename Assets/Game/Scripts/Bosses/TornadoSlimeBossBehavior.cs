@@ -42,6 +42,25 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // The volley hop-back keeps at least this distance before firing.
     public float volleyRetreatRange = 3.5f;
 
+    [Header("Vortex Pull")]
+    // Stationary special: spin up in place and drag the player toward the
+    // vortex; if they are still point-blank when it ends, they take a burst
+    // hit. Escapable by running or dashing away from the pull.
+    public float vortexInterval = 16f;
+    public float vortexRange = 7f;
+    public float vortexPullDuration = 1.6f;
+    public float vortexPullSpeed = 3.5f;
+    public float vortexBurstRadius = 2f;
+    public int vortexBurstDamage = 1;
+
+    [Header("Radial Burst")]
+    // Aerial special: hop straight up and fan mini tornadoes outward in a
+    // ring at the top of the hop.
+    public float radialBurstInterval = 12f;
+    public int radialBurstCount = 8;
+    public float radialBurstSpeed = 8f;
+    public float radialHopVelocity = 7f;
+
     [Header("Cooldowns")]
     public float attackCooldown = 1.5f;
     public float cloneAttackInterval = 10f;
@@ -74,6 +93,8 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // Ability timers
     private float cloneTimer;
     private float wallBounceTimer;
+    private float vortexTimer;
+    private float radialTimer;
 
     // Where the boss vanished from during the clone attack.
     private Vector3 lastKnownPosition;
@@ -82,6 +103,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // stale player reference, and checked for death so it stops attacking
     // a corpse.
     private PlayerHealth targetHealth;
+    private Rigidbody2D targetRb;
     private float playerRefreshTimer;
 
     // Watchdog: how long the boss has been continuously vanished.
@@ -131,10 +153,12 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         {
             player = found.transform;
             targetHealth = found.GetComponentInParent<PlayerHealth>();
+            targetRb = found.GetComponentInParent<Rigidbody2D>();
         }
         else if (targetHealth == null)
         {
             targetHealth = found.GetComponentInParent<PlayerHealth>();
+            targetRb = found.GetComponentInParent<Rigidbody2D>();
         }
         // Re-applied every refresh: Unity drops IgnoreCollision pairs whenever
         // a collider is disabled, which the vanish attacks do.
@@ -159,15 +183,22 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         // be starved by long attacks; abilities only start below, between attacks.
         cloneTimer += Time.deltaTime;
         wallBounceTimer += Time.deltaTime;
+        vortexTimer += Time.deltaTime;
+        radialTimer += Time.deltaTime;
 
-        // Target refresh must tick during attacks too; it also re-applies the
-        // player pass-through that collider toggles keep dropping.
+        // Target refresh must tick during attacks too.
         playerRefreshTimer += Time.deltaTime;
         if (playerRefreshTimer >= 2f)
         {
             playerRefreshTimer = 0f;
             RefreshPlayerTarget();
         }
+
+        // Unity silently drops IgnoreCollision pairs whenever either side's
+        // collider toggles, and the player's slide and dash toggle colliders
+        // constantly. A dropped pair lets the two bodies collide solidly and
+        // wedge the boss onto the player, so re-assert it every frame.
+        IgnorePlayerCollision(player.gameObject);
 
         // Watchdog: never stay vanished past the longest legitimate vanish
         // window; self-heal whatever interrupted the attack coroutine.
@@ -237,6 +268,22 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         }
 
         float distance = Vector2.Distance(transform.position, player.position);
+
+        // The vortex only starts when the player is near enough for the pull
+        // to matter; the timer stays expired until they come into range.
+        if (vortexTimer >= vortexInterval && distance <= vortexRange)
+        {
+            vortexTimer = 0f;
+            StartCoroutine(DoVortexPullAttack());
+            return;
+        }
+
+        if (radialTimer >= radialBurstInterval)
+        {
+            radialTimer = 0f;
+            StartCoroutine(DoRadialBurstAttack());
+            return;
+        }
 
         if (canAttack && distance <= projectileRange)
         {
@@ -333,7 +380,12 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         if (distance < standOffRange - 0.8f)
         {
             float awayDir = dx != 0f ? -Mathf.Sign(dx) : 1f;
+            // If a wall blocks the retreat, escape through the player to the
+            // open side instead; the body passes through them, so the boss
+            // must never idle wedged on top of the player.
             float backX = transform.position.x + awayDir * moveSpeed * Time.deltaTime;
+            if (backX < LeftBound || backX > RightBound) awayDir = -awayDir;
+            backX = transform.position.x + awayDir * moveSpeed * Time.deltaTime;
             if (backX >= LeftBound && backX <= RightBound)
             {
                 rb.WakeUp();
@@ -663,11 +715,19 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         ClampInsideArena();
         Face(-rushDir);
 
-        // Brief hop windup at the wall, then the sweep launches.
-        animator.Play("Jump");
-        yield return new WaitForSeconds(0.4f);
+        // Windup at the wall stays in tornado form: the slime's normal body
+        // is much wider than the tornado and poked into the wall, and a plain
+        // WaitForSeconds let gravity sink the pass-through body into the
+        // floor. Spin in place with the clamps held every frame instead.
+        float windup = 0.4f;
+        while (windup > 0f)
+        {
+            ClampInsideArena();
+            rb.linearVelocity = Vector2.zero;
+            windup -= Time.deltaTime;
+            yield return null;
+        }
 
-        animator.Play("Spin");
         SetContactDamage(true);
 
         int passes = doublePhase ? aggressiveWallBouncePasses : wallBouncePasses;
@@ -706,6 +766,120 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         animator.Play("Idle");
         isAttacking = false;
         StartCoroutine(AttackCooldown());
+    }
+
+    // Timed special: plant in place, spin up, and drag the player toward the
+    // vortex; if they are still inside the burst radius when the pull ends,
+    // they take a point-blank hit. Running or dashing away beats the pull.
+    IEnumerator DoVortexPullAttack()
+    {
+        isAttacking = true;
+        canAttack = false;
+
+        // Hop windup telegraphs the pull before any force is applied.
+        rb.linearVelocity = Vector2.zero;
+        Face(player.position.x - transform.position.x);
+        animator.Play("Jump");
+        yield return new WaitForSeconds(0.3f);
+
+        animator.Play("Spin");
+
+        float timer = 0f;
+        while (timer < vortexPullDuration)
+        {
+            if (player == null || (targetHealth != null && targetHealth.isDead)) break;
+            rb.linearVelocity = Vector2.zero;
+
+            // Drag the player horizontally toward the vortex center. Writing
+            // the body position composes with however the controller writes
+            // its own velocity, so run and dash speed still beat the pull.
+            float gap = transform.position.x - player.position.x;
+            if (Mathf.Abs(gap) > 0.2f)
+            {
+                Vector2 pull = new Vector2(Mathf.Sign(gap) * vortexPullSpeed * Time.deltaTime, 0f);
+                if (targetRb != null) targetRb.position += pull;
+                else player.position += (Vector3)pull;
+            }
+
+            Face(player.position.x - transform.position.x);
+            timer += Time.deltaTime;
+            yield return null;
+        }
+
+        // Burst: point-blank hit if the player stayed inside the radius.
+        if (player != null && targetHealth != null && !targetHealth.isDead
+            && Vector2.Distance(transform.position, player.position) <= vortexBurstRadius)
+        {
+            animator.Play("Jump");
+            targetHealth.TakeDamage(vortexBurstDamage);
+            yield return new WaitForSeconds(0.25f);
+        }
+
+        animator.Play("Idle");
+        isAttacking = false;
+        StartCoroutine(AttackCooldown());
+    }
+
+    // Timed special: hop straight up with a solid body and fan mini tornado
+    // projectiles outward in a ring at the top of the hop, then land.
+    IEnumerator DoRadialBurstAttack()
+    {
+        isAttacking = true;
+        canAttack = false;
+
+        // Crouch beat so the hop reads as a windup, not a twitch.
+        rb.linearVelocity = Vector2.zero;
+        Face(player.position.x - transform.position.x);
+        animator.Play("Jump");
+        yield return new WaitForSeconds(0.25f);
+
+        // Launch straight up; the body stays solid so gravity brings it back
+        // down to a genuine landing and the standing height capture is safe.
+        rb.WakeUp();
+        rb.linearVelocity = new Vector2(0f, radialHopVelocity);
+
+        // Ride to the apex, where vertical velocity runs out.
+        float timeout = 1.5f;
+        while (timeout > 0f && rb.linearVelocity.y > 0.5f)
+        {
+            timeout -= Time.deltaTime;
+            yield return null;
+        }
+
+        animator.Play("Spin");
+        FireRadialBurst();
+
+        // Let the fall begin, then wait for the landing to stop the body.
+        yield return new WaitForSeconds(0.1f);
+        timeout = 2f;
+        while (timeout > 0f && Mathf.Abs(rb.linearVelocity.y) > 0.05f)
+        {
+            timeout -= Time.deltaTime;
+            yield return null;
+        }
+
+        rb.linearVelocity = Vector2.zero;
+        animator.Play("Idle");
+        isAttacking = false;
+        StartCoroutine(AttackCooldown());
+    }
+
+    // Spawns the radial ring of mini tornadoes around the boss, evenly spaced
+    // over the full circle.
+    private void FireRadialBurst()
+    {
+        if (miniProjectilePrefab == null) return;
+        int count = Mathf.Max(3, radialBurstCount);
+        for (int i = 0; i < count; i++)
+        {
+            float angle = (360f / count) * i * Mathf.Deg2Rad;
+            Vector2 dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+            Vector3 spawnPos = transform.position + (Vector3)(dir * 0.8f);
+            GameObject proj = Instantiate(miniProjectilePrefab, spawnPos, Quaternion.identity);
+            var mini = proj.GetComponent<MiniTornadoProjectile>();
+            mini.speed = radialBurstSpeed;
+            mini.SetDirection(dir);
+        }
     }
 
     // ---- Helpers ----

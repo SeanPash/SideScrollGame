@@ -26,6 +26,11 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // into a corner. Bounds derive from the wall bounce points.
     public float wallMargin = 0.8f;
     public float dashTelegraphTime = 0.35f;
+    // The dash is a short decelerating lunge rather than a long flat push.
+    public float dashDuration = 0.55f;
+    // The chase stops at this distance so the boss looms instead of standing
+    // inside the player.
+    public float standOffRange = 1.3f;
 
     [Header("Cooldowns")]
     public float attackCooldown = 1.5f;
@@ -63,10 +68,6 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // Where the boss vanished from during the clone attack.
     private Vector3 lastKnownPosition;
 
-    // Hover height captured at startup; gravity is zero on this boss, so any
-    // stray vertical velocity would otherwise float it away permanently.
-    private float homeY;
-
     // Resolves the body collider, disarms contact damage, and acquires the
     // runtime-spawned player by tag (inspector references cannot point at a
     // runtime-spawned Warrior).
@@ -76,7 +77,9 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         // Physics torque must never flip the tornado; keep it upright always.
         rb.freezeRotation = true;
         transform.rotation = Quaternion.identity;
-        homeY = transform.position.y;
+        // The tornado fights grounded; the scene body was authored with zero
+        // gravity, which left it floating mid-air.
+        rb.gravityScale = 1f;
         SetContactDamage(false);
 
         while (player == null)
@@ -116,8 +119,8 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
         if (canAttack && distance <= projectileRange)
         {
-            // Alternate: dash when close (unless a volley is due), volley
-            // otherwise. Guarantees projectiles actually get used.
+            // Strict alternation keeps both attacks in the rotation; the
+            // volley backs off on its own when it starts point-blank.
             if (distance <= spinRange && !preferVolley)
             {
                 preferVolley = true;
@@ -197,41 +200,52 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     }
 
     // Walks toward the player (the tornado only spins during attacks, so the
-    // spin reads as danger). Holds position at walls and near the other boss.
+    // spin reads as danger). Holds position at walls, near the other boss, and
+    // at stand-off range so it looms instead of standing inside the player.
     void MoveTowardsPlayer()
     {
-        Vector2 direction = (player.position - transform.position).normalized;
+        float dx = player.position.x - transform.position.x;
+        float distance = Vector2.Distance(transform.position, player.position);
 
-        // Gentle settle back to hover height; gravity is zero on this body.
-        float settleY = Mathf.Clamp((homeY - transform.position.y) * 2f, -3f, 3f);
+        // Close enough: face the player and idle until an attack is ready.
+        if (distance <= standOffRange)
+        {
+            rb.WakeUp();
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            Face(dx);
+            animator.Play("Idle");
+            return;
+        }
+
+        float dirX = Mathf.Sign(dx);
 
         if (otherBoss != null && otherBoss.gameObject.activeInHierarchy)
         {
             float toOther = otherBoss.position.x - transform.position.x;
-            bool movingTowardOther = Mathf.Sign(direction.x) == Mathf.Sign(toOther);
+            bool movingTowardOther = dirX == Mathf.Sign(toOther);
             if (movingTowardOther && Mathf.Abs(toOther) < minSeparation)
             {
                 rb.WakeUp();
-                rb.linearVelocity = new Vector2(0f, settleY);
+                rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
                 animator.Play("Idle");
                 return;
             }
         }
 
         // Never walk into the arena walls.
-        float nextX = transform.position.x + direction.x * moveSpeed * Time.deltaTime;
+        float nextX = transform.position.x + dirX * moveSpeed * Time.deltaTime;
         if (nextX < LeftBound || nextX > RightBound)
         {
             rb.WakeUp();
-            rb.linearVelocity = new Vector2(0f, settleY);
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
             animator.Play("Idle");
             return;
         }
 
         // A sleeping Rigidbody2D ignores velocity writes; wake it explicitly.
         rb.WakeUp();
-        rb.linearVelocity = new Vector2(direction.x * moveSpeed, settleY);
-        Face(direction.x);
+        rb.linearVelocity = new Vector2(dirX * moveSpeed, rb.linearVelocity.y);
+        Face(dirX);
         animator.Play("Walk");
     }
 
@@ -251,35 +265,60 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
         animator.Play("Spin");
         SetContactDamage(true);
-        float dashDirection = Mathf.Sign(player.position.x - transform.position.x);
 
+        // Pass through the player during the lunge so the two bodies can
+        // never wedge against each other; contact damage still triggers.
+        if (bodyCollider != null) bodyCollider.isTrigger = true;
+
+        float dashDirection = Mathf.Sign(player.position.x - transform.position.x);
+        if (dashDirection == 0f) dashDirection = Mathf.Sign(transform.localScale.x);
+
+        // Decelerating lunge: fast launch that eases off instead of a long
+        // flat push across the arena.
         float timer = 0f;
-        while (timer < 0.8f)
+        while (timer < dashDuration)
         {
-            float nextX = transform.position.x + dashDirection * dashSpeed * Time.deltaTime;
+            float speed = Mathf.Lerp(dashSpeed, dashSpeed * 0.25f, timer / dashDuration);
+            float nextX = transform.position.x + dashDirection * speed * Time.deltaTime;
             if (nextX < LeftBound || nextX > RightBound) break;
             rb.WakeUp();
-            rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0f);
+            rb.linearVelocity = new Vector2(dashDirection * speed, 0f);
             timer += Time.deltaTime;
             yield return null;
         }
 
         rb.linearVelocity = Vector2.zero;
+        if (bodyCollider != null) bodyCollider.isTrigger = false;
         SetContactDamage(false);
         animator.Play("Idle");
         isAttacking = false;
         StartCoroutine(AttackCooldown());
     }
 
-    // Mid range: stop, spin in place, and fire three mini tornado projectiles,
-    // each aimed at the player's position at fire time.
+    // Spin in place and fire three mini tornado projectiles, each aimed at the
+    // player's position at fire time. Starting point-blank, the boss first
+    // hops backward so the volley reads as a ranged attack.
     IEnumerator DoMiniProjectileSpin()
     {
         isAttacking = true;
         canAttack = false;
 
         animator.Play("Spin");
-        rb.linearVelocity = Vector2.zero;
+
+        float away = Mathf.Sign(transform.position.x - player.position.x);
+        if (away == 0f) away = -Mathf.Sign(transform.localScale.x);
+        float retreat = 0f;
+        while (Vector2.Distance(transform.position, player.position) < standOffRange + 0.7f
+            && retreat < 0.45f)
+        {
+            float nextX = transform.position.x + away * 6f * Time.deltaTime;
+            if (nextX < LeftBound || nextX > RightBound) break;
+            rb.WakeUp();
+            rb.linearVelocity = new Vector2(away * 6f, rb.linearVelocity.y);
+            retreat += Time.deltaTime;
+            yield return null;
+        }
+        rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
 
         for (int i = 0; i < 3; i++)
         {
@@ -434,11 +473,15 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     }
 
     // Restores sprite, collider, physics, and upright rotation after a
-    // vanish-based attack.
+    // vanish-based attack or an interrupted lunge.
     private void RestoreAfterVanish()
     {
         if (spriteRenderer != null) spriteRenderer.enabled = true;
-        if (bodyCollider != null) bodyCollider.enabled = true;
+        if (bodyCollider != null)
+        {
+            bodyCollider.enabled = true;
+            bodyCollider.isTrigger = false;
+        }
         if (rb != null)
         {
             rb.simulated = true;

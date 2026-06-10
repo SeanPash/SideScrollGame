@@ -131,6 +131,9 @@ public class SlimeBossPhaseManager : MonoBehaviour
         {
             firstBoss.EnterInactiveState();
             firstHealth.SetInvulnerable(true);
+            // The retreating boss leaves the arena entirely until the final
+            // phase brings it back.
+            firstObject.SetActive(false);
         }
         if (firstBar != null) firstBar.Hide();
 
@@ -151,6 +154,7 @@ public class SlimeBossPhaseManager : MonoBehaviour
 
         if (!BossGone(firstObject, firstHealth))
         {
+            firstObject.SetActive(true);
             firstHealth.SetInvulnerable(false);
             firstBoss.Reactivate();
             firstBoss.EnableDoublePhase();

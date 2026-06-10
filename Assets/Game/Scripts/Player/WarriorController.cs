@@ -9,7 +9,6 @@ public class WarriorController : MonoBehaviour
     private SpriteRenderer sr;
     public float jumpForce = 7f;
     private float wallJumpCooldown = 0.25f;
-    private bool jumpedFromThisWall = false;
 
     private float lastWallJumpTime = -999f;
 
@@ -20,10 +19,8 @@ public class WarriorController : MonoBehaviour
     private bool hasPlayedChargeFinish = false;
     public Transform wallCheck;
     public float wallCheckDistance = 0.3f;
-    private int lastWallID = -1;
     private bool isGrounded;
 
-    private int currentWallID = -1;
     private float hitboxDelay = .15f;
     public float chargedHitboxDelay = .2f;
 
@@ -109,7 +106,6 @@ public float pushTimer = 0f;
     private float wallJumpGraceTimer = 0f;
     private readonly float wallJumpGraceDuration = 0.5f;
 
-    public int maxJumps = 3;
     private int jumpCount = 0;
     public float dashDistance = 12f;
     private bool isFacingRight = true;
@@ -244,31 +240,8 @@ wasGrounded = isGrounded;
 
             }
         }
-        // Reset jump lock if on a new wall
-        if (!IsGrounded() && currentWallID != -1 && currentWallID != lastWallID)
-        {
-            jumpedFromThisWall = false;
-        }
-
-
         if (wallJumpFlipSuppressTimer > 0f)
             wallJumpFlipSuppressTimer -= Time.deltaTime;
-
-        if (IsGrounded())
-        {
-            jumpedFromThisWall = false;
-        }
-        else if (currentWallID != lastWallID && currentWallID != -1)
-        {
-            jumpedFromThisWall = false;
-        }
-        if (IsGrounded())
-        {
-            jumpedFromThisWall = false;
-            lastWallID = -1;
-        }
-
-
     }
 
     void MovementMethod()
@@ -1272,13 +1245,11 @@ if (!IsInAnyCrouch())
         Collider2D wall = Physics2D.OverlapCircle(wallCheck.position, 0.08f, whatIsWall);
         if (wall != null)
         {
-            currentWallID = wall.gameObject.GetInstanceID();
             // Side of the wall relative to the player, used for the alternating
             // wall-jump rule. Independent of how many colliders form the wall.
             currentWallSide = wall.bounds.center.x > transform.position.x ? 1 : -1;
             return true;
         }
-        currentWallID = -1;
         return false;
     }
 

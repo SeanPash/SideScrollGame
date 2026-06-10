@@ -48,17 +48,9 @@ public class TornadoSlimeBossHealth : MonoBehaviour, IDamageable, IBossHealth
         currentHealth -= amount;
         Debug.Log("Tornado Slime took damage. Current HP: " + currentHealth);
 
+        // The tornado controller has no hit state; the red flash is the hit
+        // feedback.
         StartCoroutine(FlashRed());
-
-        // Only play the hurt animation when not mid-attack.
-        if (!tornadoBehavior.isAttacking)
-        {
-            AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-            if (!stateInfo.IsName("Enemy Attack 1") && !stateInfo.IsTag("Attack"))
-            {
-                animator.Play("Enemy Hit");
-            }
-        }
 
         if (currentHealth <= 0)
         {
@@ -88,7 +80,9 @@ public class TornadoSlimeBossHealth : MonoBehaviour, IDamageable, IBossHealth
 
         if (animator != null)
         {
-            animator.Play("Enemy Death");
+            // The controller has no death state; Sleep doubles as the
+            // collapsed death pose.
+            animator.Play("Sleep");
             Debug.Log("Tornado Slime death animation playing...");
         }
 

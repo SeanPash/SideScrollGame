@@ -16,10 +16,12 @@ public class MiniTornadoProjectile : MonoBehaviour
         Destroy(gameObject, lifetime);
     }
 
-    // Sets the travel direction once at spawn time.
+    // Sets the travel direction once at spawn time and faces the sprite that way.
     public void SetDirection(Vector2 dir)
     {
         direction = dir.normalized;
+        var sr = GetComponent<SpriteRenderer>();
+        if (sr != null) sr.flipX = direction.x < 0f;
     }
 
     void Update()

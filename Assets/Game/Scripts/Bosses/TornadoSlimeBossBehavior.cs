@@ -22,6 +22,10 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     public float spinRange = 4f;
     public float projectileRange = 6f;
     public float wallBounceSpeed = 12f;
+    // Kept distance from the arena walls so dashes and chases never grind
+    // into a corner. Bounds derive from the wall bounce points.
+    public float wallMargin = 0.8f;
+    public float dashTelegraphTime = 0.35f;
 
     [Header("Cooldowns")]
     public float attackCooldown = 1.5f;
@@ -59,12 +63,20 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     // Where the boss vanished from during the clone attack.
     private Vector3 lastKnownPosition;
 
+    // Hover height captured at startup; gravity is zero on this boss, so any
+    // stray vertical velocity would otherwise float it away permanently.
+    private float homeY;
+
     // Resolves the body collider, disarms contact damage, and acquires the
     // runtime-spawned player by tag (inspector references cannot point at a
     // runtime-spawned Warrior).
     IEnumerator Start()
     {
         if (bodyCollider == null) bodyCollider = GetComponent<Collider2D>();
+        // Physics torque must never flip the tornado; keep it upright always.
+        rb.freezeRotation = true;
+        transform.rotation = Quaternion.identity;
+        homeY = transform.position.y;
         SetContactDamage(false);
 
         while (player == null)
@@ -147,6 +159,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         RestoreAfterVanish();
         SetContactDamage(false);
         rb.linearVelocity = Vector2.zero;
+        animator.Play("Idle");
     }
 
     // Resumes the boss AI after being benched.
@@ -166,11 +179,31 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
     // ---- Movement and attacks ----
 
-    // Chases the player horizontally while spinning. In the final phase the
-    // chase holds position rather than crowding the other boss.
+    // Arena bounds derived from the wall bounce points plus the margin.
+    private float LeftBound => wallBouncePoints != null && wallBouncePoints.Length >= 2
+        ? Mathf.Min(wallBouncePoints[0].position.x, wallBouncePoints[1].position.x) + wallMargin
+        : float.NegativeInfinity;
+    private float RightBound => wallBouncePoints != null && wallBouncePoints.Length >= 2
+        ? Mathf.Max(wallBouncePoints[0].position.x, wallBouncePoints[1].position.x) - wallMargin
+        : float.PositiveInfinity;
+
+    // Flips the sprite to face the given horizontal direction.
+    private void Face(float dirX)
+    {
+        if (dirX != 0f)
+            transform.localScale = new Vector3(
+                Mathf.Sign(dirX) * Mathf.Abs(transform.localScale.x),
+                transform.localScale.y, transform.localScale.z);
+    }
+
+    // Walks toward the player (the tornado only spins during attacks, so the
+    // spin reads as danger). Holds position at walls and near the other boss.
     void MoveTowardsPlayer()
     {
         Vector2 direction = (player.position - transform.position).normalized;
+
+        // Gentle settle back to hover height; gravity is zero on this body.
+        float settleY = Mathf.Clamp((homeY - transform.position.y) * 2f, -3f, 3f);
 
         if (otherBoss != null && otherBoss.gameObject.activeInHierarchy)
         {
@@ -178,56 +211,87 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
             bool movingTowardOther = Mathf.Sign(direction.x) == Mathf.Sign(toOther);
             if (movingTowardOther && Mathf.Abs(toOther) < minSeparation)
             {
-                rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
-                animator.Play("Enemy Spin");
+                rb.WakeUp();
+                rb.linearVelocity = new Vector2(0f, settleY);
+                animator.Play("Idle");
                 return;
             }
         }
 
+        // Never walk into the arena walls.
+        float nextX = transform.position.x + direction.x * moveSpeed * Time.deltaTime;
+        if (nextX < LeftBound || nextX > RightBound)
+        {
+            rb.WakeUp();
+            rb.linearVelocity = new Vector2(0f, settleY);
+            animator.Play("Idle");
+            return;
+        }
+
         // A sleeping Rigidbody2D ignores velocity writes; wake it explicitly.
         rb.WakeUp();
-        rb.linearVelocity = new Vector2(direction.x * moveSpeed, rb.linearVelocity.y);
-        animator.Play("Enemy Spin");
+        rb.linearVelocity = new Vector2(direction.x * moveSpeed, settleY);
+        Face(direction.x);
+        animator.Play("Walk");
     }
 
-    // Close range: spin and dash forward through the player's position.
+    // Close range: hop telegraph, then spin and dash through the player's
+    // position. The dash ends early at the arena walls instead of grinding
+    // into a corner.
     IEnumerator DoForwardSpinAttack()
     {
         isAttacking = true;
         canAttack = false;
 
-        animator.Play("Enemy Spin");
+        // Telegraph: face the player and hop in place before committing.
+        Face(player.position.x - transform.position.x);
+        rb.linearVelocity = Vector2.zero;
+        animator.Play("Jump");
+        yield return new WaitForSeconds(dashTelegraphTime);
+
+        animator.Play("Spin");
         SetContactDamage(true);
-
         float dashDirection = Mathf.Sign(player.position.x - transform.position.x);
-        rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0);
 
-        yield return new WaitForSeconds(0.8f);
+        float timer = 0f;
+        while (timer < 0.8f)
+        {
+            float nextX = transform.position.x + dashDirection * dashSpeed * Time.deltaTime;
+            if (nextX < LeftBound || nextX > RightBound) break;
+            rb.WakeUp();
+            rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0f);
+            timer += Time.deltaTime;
+            yield return null;
+        }
 
         rb.linearVelocity = Vector2.zero;
         SetContactDamage(false);
+        animator.Play("Idle");
         isAttacking = false;
         StartCoroutine(AttackCooldown());
     }
 
-    // Mid range: stop and fire three mini tornado projectiles at the player.
+    // Mid range: stop, spin in place, and fire three mini tornado projectiles,
+    // each aimed at the player's position at fire time.
     IEnumerator DoMiniProjectileSpin()
     {
         isAttacking = true;
         canAttack = false;
 
-        animator.Play("Enemy Spin");
+        animator.Play("Spin");
         rb.linearVelocity = Vector2.zero;
 
         for (int i = 0; i < 3; i++)
         {
             yield return new WaitForSeconds(1f);
+            Face(player.position.x - transform.position.x);
             GameObject proj = Instantiate(miniProjectilePrefab, transform.position, Quaternion.identity);
             Vector2 dir = (player.position - transform.position).normalized;
             proj.GetComponent<MiniTornadoProjectile>().SetDirection(dir);
         }
 
         yield return new WaitForSeconds(0.5f);
+        animator.Play("Idle");
         isAttacking = false;
         StartCoroutine(AttackCooldown());
     }
@@ -247,15 +311,13 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         rb.linearVelocity = Vector2.zero;
         rb.simulated = false;
 
-        // Spawn one clone on each side of the player.
+        // Spawn one clone on each side of the player. Clones spin and are
+        // slightly translucent so they read as copies, not a second boss.
         Vector3 playerPos = player.position;
         GameObject leftClone = Instantiate(clonePrefab, playerPos + new Vector3(-2f, 0f, 0f), Quaternion.identity);
         GameObject rightClone = Instantiate(clonePrefab, playerPos + new Vector3(2f, 0f, 0f), Quaternion.identity);
-
-        Animator animL = leftClone.GetComponent<Animator>();
-        Animator animR = rightClone.GetComponent<Animator>();
-        if (animL != null) animL.Play("Enemy Attack 1");
-        if (animR != null) animR.Play("Enemy Attack 1");
+        SetupClone(leftClone, 1f);
+        SetupClone(rightClone, -1f);
 
         StartCoroutine(MoveCloneToPlayer(leftClone));
         StartCoroutine(MoveCloneToPlayer(rightClone));
@@ -269,6 +331,22 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         yield return new WaitForSeconds(0.3f);
         isAttacking = false;
         StartCoroutine(AttackCooldown());
+    }
+
+    // Configures a freshly spawned clone: spinning, translucent, upright, and
+    // facing its travel direction.
+    private void SetupClone(GameObject clone, float faceDir)
+    {
+        var anim = clone.GetComponent<Animator>();
+        if (anim != null) anim.Play("Spin");
+        var sr = clone.GetComponent<SpriteRenderer>();
+        if (sr != null) sr.color = new Color(1f, 1f, 1f, 0.7f);
+        var cloneRb = clone.GetComponent<Rigidbody2D>();
+        if (cloneRb != null) cloneRb.freezeRotation = true;
+        clone.transform.rotation = Quaternion.identity;
+        clone.transform.localScale = new Vector3(
+            faceDir * Mathf.Abs(clone.transform.localScale.x),
+            clone.transform.localScale.y, clone.transform.localScale.z);
     }
 
     // Moves one clone toward the player's position at spawn time, then removes it.
@@ -306,7 +384,13 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
         isAttacking = true;
         canAttack = false;
-        animator.Play("Enemy Spin");
+
+        // Telegraph the arena-wide attack before it starts.
+        rb.linearVelocity = Vector2.zero;
+        animator.Play("Jump");
+        yield return new WaitForSeconds(dashTelegraphTime);
+
+        animator.Play("Spin");
         SetContactDamage(true);
 
         Vector3 left = wallBouncePoints[0].position;
@@ -334,6 +418,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
         rb.linearVelocity = Vector2.zero;
         SetContactDamage(false);
+        animator.Play("Idle");
         isAttacking = false;
         StartCoroutine(AttackCooldown());
     }
@@ -348,7 +433,8 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         canAttack = true;
     }
 
-    // Restores sprite, collider, and physics after a vanish-based attack.
+    // Restores sprite, collider, physics, and upright rotation after a
+    // vanish-based attack.
     private void RestoreAfterVanish()
     {
         if (spriteRenderer != null) spriteRenderer.enabled = true;
@@ -358,6 +444,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
             rb.simulated = true;
             rb.linearVelocity = Vector2.zero;
         }
+        transform.rotation = Quaternion.identity;
     }
 
     // Arms or disarms the contact damage component used during spin attacks.

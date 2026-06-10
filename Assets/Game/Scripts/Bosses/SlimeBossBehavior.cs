@@ -37,6 +37,12 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
     public float slamFlashDuration = 0.2f;
     public Transform[] miniSlimeSpawnPoints;
 
+    [Header("Final Phase Separation")]
+    // Set by the phase manager when both bosses fight; landing spots keep this
+    // distance from the other boss so the two do not pile up.
+    public Transform otherBoss;
+    public float minSeparation = 2.5f;
+
     // State flags
     public bool isAttacking = false;
     private bool canAttack = true;
@@ -163,7 +169,7 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
         float dir = Mathf.Sign(player.position.x - transform.position.x);
         float distanceToPlayer = Mathf.Abs(player.position.x - transform.position.x);
         float clampedDistance = Mathf.Min(distanceToPlayer, maxJumpDistance);
-        float lockedTargetX = transform.position.x + dir * clampedDistance;
+        float lockedTargetX = ApplySeparation(transform.position.x + dir * clampedDistance);
 
         animator.Play("Enemy Attack 1");
 
@@ -199,29 +205,40 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
         isAttacking = true;
         rb.linearVelocity = Vector2.zero;
 
+        // Pin all slam positions to the ground level captured before vanishing;
+        // the boss must reappear here, never wherever physics drifted it.
+        float groundY = transform.position.y;
+
         for (int i = 0; i < 3; i++)
         {
-            // Vanish: hide sprite and disable collider so the player cannot hit
-            // an invisible boss.
+            // Vanish: hide sprite, disable collider, and freeze physics so the
+            // boss cannot be hit AND cannot fall through the floor while its
+            // collider is off (falling here is what made the boss disappear
+            // under the map permanently).
             spriteRenderer.enabled = false;
             if (bodyCollider != null) bodyCollider.enabled = false;
+            rb.simulated = false;
 
-            Vector2 outlinePos = new Vector2(player.position.x, transform.position.y);
+            Vector2 outlinePos = new Vector2(player.position.x, groundY);
             GameObject redOutline = Instantiate(redOutlinePrefab, outlinePos, Quaternion.identity);
+
+            // Force a clearly visible telegraph regardless of the prefab's own
+            // (faint) serialized color: orange while tracking, red when locked.
+            SpriteRenderer outlineSr = redOutline.GetComponent<SpriteRenderer>();
+            if (outlineSr != null) outlineSr.color = new Color(1f, 0.55f, 0f, 0.6f);
 
             // Track the player for the windup duration.
             float trackTimer = slamTrackDuration;
             while (trackTimer > 0f)
             {
-                outlinePos = new Vector2(player.position.x, transform.position.y);
+                outlinePos = new Vector2(player.position.x, groundY);
                 if (redOutline != null) redOutline.transform.position = outlinePos;
                 trackTimer -= Time.deltaTime;
                 yield return null;
             }
 
             // Lock the target and flash: this is the player's dodge window.
-            if (redOutline != null)
-                redOutline.GetComponent<SpriteRenderer>().color = Color.red;
+            if (outlineSr != null) outlineSr.color = new Color(1f, 0f, 0f, 0.9f);
             yield return new WaitForSeconds(slamFlashDuration);
             if (redOutline != null) Destroy(redOutline);
 
@@ -304,10 +321,29 @@ public class SlimeBossBehavior : MonoBehaviour, IBoss
         animator.Play("Enemy Idle");
     }
 
-    // Restores sprite and collider after a vanish-based attack.
+    // Restores sprite, collider, and physics after a vanish-based attack.
     private void RestoreAfterVanish()
     {
         if (spriteRenderer != null) spriteRenderer.enabled = true;
         if (bodyCollider != null) bodyCollider.enabled = true;
+        if (rb != null)
+        {
+            rb.simulated = true;
+            rb.linearVelocity = Vector2.zero;
+        }
+    }
+
+    // Final phase: keeps a landing spot away from the other boss so the two
+    // do not pile onto the same position.
+    private float ApplySeparation(float targetX)
+    {
+        if (otherBoss == null || !otherBoss.gameObject.activeInHierarchy) return targetX;
+
+        float gap = targetX - otherBoss.position.x;
+        if (Mathf.Abs(gap) >= minSeparation) return targetX;
+
+        float side = gap != 0f ? Mathf.Sign(gap) : Mathf.Sign(transform.position.x - otherBoss.position.x);
+        if (side == 0f) side = 1f;
+        return otherBoss.position.x + side * minSeparation;
     }
 }

@@ -20,6 +20,15 @@ public class SlimeGooZone : MonoBehaviour
     private static int zonesContainingPlayer = 0;
     private static float originalMoveSpeed = -1f;
 
+    // Reset the shared state on play start; statics survive between plays when
+    // domain reload is disabled in Enter Play Mode settings.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetSharedState()
+    {
+        zonesContainingPlayer = 0;
+        originalMoveSpeed = -1f;
+    }
+
     private float tickTimer = 0f;
     private bool playerInside = false;
     private PlayerHealth trackedHealth;

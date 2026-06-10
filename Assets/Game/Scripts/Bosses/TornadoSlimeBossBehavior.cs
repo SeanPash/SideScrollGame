@@ -34,12 +34,23 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     public float aggressiveSpeedMultiplier = 1.3f;
     public float aggressiveWallBounceInterval = 12f;
 
+    [Header("Final Phase Separation")]
+    // Set by the phase manager when both bosses fight; the chase holds position
+    // instead of crowding the other boss.
+    public Transform otherBoss;
+    public float minSeparation = 2.5f;
+
     // State flags
     public bool isDead = false;
     public bool isAttacking = false;
     public bool canAttack = true;
     private bool isActive = false;
     private bool doublePhase = false;
+
+    // Alternates dash and projectile volley so both attacks appear regularly;
+    // a pure distance check starves the volley because the dash-chase loop
+    // keeps the boss inside dash range.
+    private bool preferVolley = false;
 
     // Ability timers
     private float cloneTimer;
@@ -91,13 +102,20 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
         float distance = Vector2.Distance(transform.position, player.position);
 
-        if (canAttack && distance <= spinRange)
+        if (canAttack && distance <= projectileRange)
         {
-            StartCoroutine(DoForwardSpinAttack());
-        }
-        else if (canAttack && distance <= projectileRange)
-        {
-            StartCoroutine(DoMiniProjectileSpin());
+            // Alternate: dash when close (unless a volley is due), volley
+            // otherwise. Guarantees projectiles actually get used.
+            if (distance <= spinRange && !preferVolley)
+            {
+                preferVolley = true;
+                StartCoroutine(DoForwardSpinAttack());
+            }
+            else
+            {
+                preferVolley = false;
+                StartCoroutine(DoMiniProjectileSpin());
+            }
         }
         else
         {
@@ -148,10 +166,24 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
 
     // ---- Movement and attacks ----
 
-    // Chases the player horizontally while spinning.
+    // Chases the player horizontally while spinning. In the final phase the
+    // chase holds position rather than crowding the other boss.
     void MoveTowardsPlayer()
     {
         Vector2 direction = (player.position - transform.position).normalized;
+
+        if (otherBoss != null && otherBoss.gameObject.activeInHierarchy)
+        {
+            float toOther = otherBoss.position.x - transform.position.x;
+            bool movingTowardOther = Mathf.Sign(direction.x) == Mathf.Sign(toOther);
+            if (movingTowardOther && Mathf.Abs(toOther) < minSeparation)
+            {
+                rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+                animator.Play("Enemy Spin");
+                return;
+            }
+        }
+
         rb.linearVelocity = new Vector2(direction.x * moveSpeed, rb.linearVelocity.y);
         animator.Play("Enemy Spin");
     }
@@ -206,11 +238,12 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         canAttack = false;
         lastKnownPosition = transform.position;
 
-        // Vanish: hide sprite and disable collider so the player cannot hit
-        // an invisible boss.
+        // Vanish: hide sprite, disable collider, and freeze physics so the boss
+        // cannot be hit and cannot fall through the floor while intangible.
         spriteRenderer.enabled = false;
         if (bodyCollider != null) bodyCollider.enabled = false;
         rb.linearVelocity = Vector2.zero;
+        rb.simulated = false;
 
         // Spawn one clone on each side of the player.
         Vector3 playerPos = player.position;
@@ -313,11 +346,16 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         canAttack = true;
     }
 
-    // Restores sprite and collider after a vanish-based attack.
+    // Restores sprite, collider, and physics after a vanish-based attack.
     private void RestoreAfterVanish()
     {
         if (spriteRenderer != null) spriteRenderer.enabled = true;
         if (bodyCollider != null) bodyCollider.enabled = true;
+        if (rb != null)
+        {
+            rb.simulated = true;
+            rb.linearVelocity = Vector2.zero;
+        }
     }
 
     // Arms or disarms the contact damage component used during spin attacks.

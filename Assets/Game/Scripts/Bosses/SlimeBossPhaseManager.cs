@@ -21,6 +21,11 @@ public class SlimeBossPhaseManager : MonoBehaviour
     [Header("Timing")]
     public float swapDelay = 2f;
 
+    [Header("Debug")]
+    // 0 = random starter, 1 = slime always first, 2 = tornado always first.
+    // For testing each opener; leave 0 for normal play.
+    public int debugForceFirstBoss = 0;
+
     [Header("Victory Signal")]
     // Optional marker object deactivated when the encounter is truly complete.
     // Progression systems (e.g. BossReward) can watch this instead of a single
@@ -62,7 +67,8 @@ public class SlimeBossPhaseManager : MonoBehaviour
     {
         if (phase != Phase.NotStarted) return;
 
-        bool slimeFirst = Random.value < 0.5f;
+        bool slimeFirst = debugForceFirstBoss == 1
+            || (debugForceFirstBoss != 2 && Random.value < 0.5f);
         firstObject = slimeFirst ? slimeBossObject : tornadoBossObject;
         secondObject = slimeFirst ? tornadoBossObject : slimeBossObject;
         firstBar = slimeFirst ? slimeBossHealthBar : tornadoBossHealthBar;
@@ -73,10 +79,12 @@ public class SlimeBossPhaseManager : MonoBehaviour
         firstHealth = firstObject.GetComponent<IBossHealth>();
         secondHealth = secondObject.GetComponent<IBossHealth>();
 
-        // Hide and protect the second boss until it enters the arena.
+        // Both bosses sit hidden in the scene; reveal only the chosen starter.
+        // The second boss stays hidden and protected until it enters the arena.
         secondObject.SetActive(false);
         secondHealth.SetInvulnerable(true);
 
+        firstObject.SetActive(true);
         firstHealth.SetInvulnerable(false);
         firstBoss.ActivateBoss();
         if (firstBar != null) firstBar.Show();
@@ -152,6 +160,13 @@ public class SlimeBossPhaseManager : MonoBehaviour
         {
             secondBoss.EnableDoublePhase();
         }
+
+        // Give each boss the other's transform so they keep their distance
+        // instead of cluttering on the same spot.
+        var slimeB = slimeBossObject != null ? slimeBossObject.GetComponent<SlimeBossBehavior>() : null;
+        var tornadoB = tornadoBossObject != null ? tornadoBossObject.GetComponent<TornadoSlimeBossBehavior>() : null;
+        if (slimeB != null && tornadoBossObject != null) slimeB.otherBoss = tornadoBossObject.transform;
+        if (tornadoB != null && slimeBossObject != null) tornadoB.otherBoss = slimeBossObject.transform;
 
         phase = Phase.Final;
     }

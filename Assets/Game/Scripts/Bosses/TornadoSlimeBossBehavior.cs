@@ -59,10 +59,10 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
     public float radialBurstInterval = 12f;
     public int radialBurstCount = 6;
     public float radialBurstSpeed = 7.5f;
-    public float radialHopVelocity = 9f;
+    public float radialHopVelocity = 12f;
 
     [Header("Cooldowns")]
-    public float attackCooldown = 1.5f;
+    public float attackCooldown = 1.2f;
     public float cloneAttackInterval = 10f;
     public float wallBounceInterval = 20f;
 
@@ -924,7 +924,7 @@ public class TornadoSlimeBossBehavior : MonoBehaviour, IBoss
         rb.linearVelocity = new Vector2(0f, radialHopVelocity);
 
         // Ride to the apex, where vertical velocity runs out.
-        float timeout = 1.5f;
+        float timeout = 2f;
         while (timeout > 0f && rb.linearVelocity.y > 0.5f)
         {
             timeout -= Time.deltaTime;
